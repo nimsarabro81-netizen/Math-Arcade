@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "UserRank": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserRank",
+      "type": "object",
+      "description": "Stores user ranking information for the VectorZen app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserRank entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User. (Relationship: User 1:N UserRank)"
+        },
+        "score": {
+          "type": "number",
+          "description": "The user's score in the VectorZen game.",
+          "format": "integer"
+        },
+        "rank": {
+          "type": "number",
+          "description": "The user's rank among all players.",
+          "format": "integer"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "description": "Timestamp of the last time the user's score/rank was updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "score",
+        "rank",
+        "lastUpdated"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the VectorZen app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "registrationDate": {
+          "type": "string",
+          "description": "Timestamp of when the user registered.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "registrationDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Used for authentication and user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/userRanks/{userRankId}",
+        "definition": {
+          "entityName": "UserRank",
+          "schema": {
+            "$ref": "#/backend/entities/UserRank"
+          },
+          "description": "Stores user ranking data. Each user has a subcollection of ranks directly associated with them. This enables secure list operations and ownership checks.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "userRankId",
+              "description": "The unique identifier for the user rank."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The data structure prioritizes authorization independence and efficient data retrieval for the VectorZen application, focusing on the user ranking system. We use path-based ownership for user ranks and leverage denormalization for authorization independence. Specifically, the `UserRank` collection is nested under each user's document (`/users/{userId}/userRanks/{userRankId}`). This ensures that each user's ranking data is directly associated with their user ID, simplifying security rules and enabling efficient querying of a single user's ranking information. This achieves Authorization Independence because access to a user's rank does not depend on data outside the scope of `/users/{userId}/userRanks/{userRankId}`. This also makes the QAPs simple to fulfill, as listing ranks is isolated to each user."
+  }
+}
