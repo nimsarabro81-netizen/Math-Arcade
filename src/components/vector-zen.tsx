@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -66,6 +66,20 @@ export function VectorZen() {
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
 
+  const pairSoundRef = useRef<HTMLAudioElement>(null);
+  const correctSoundRef = useRef<HTMLAudioElement>(null);
+  const incorrectSoundRef = useRef<HTMLAudioElement>(null);
+  const levelUpSoundRef = useRef<HTMLAudioElement>(null);
+  const victorySoundRef = useRef<HTMLAudioElement>(null);
+
+  const playSound = (soundRef: React.RefObject<HTMLAudioElement>) => {
+    if (soundRef.current) {
+      soundRef.current.currentTime = 0;
+      soundRef.current.play().catch(e => console.error("Error playing sound:", e));
+    }
+  };
+
+
   useEffect(() => {
     if (!user) {
       initiateAnonymousSignIn(auth);
@@ -106,6 +120,7 @@ export function VectorZen() {
       const firstSelectedBall = balls.find(b => b.id === selectedBallIds[0]);
       if (firstSelectedBall && firstSelectedBall.value !== ball.value) {
         setSelectedBallIds(prev => [...prev, clickedBallId]);
+        playSound(pairSoundRef);
       } else {
         setSelectedBallIds([clickedBallId]);
       }
@@ -168,6 +183,7 @@ export function VectorZen() {
             title: "Still pairs to make!",
             description: "You need to cancel out all positive and negative pairs first.",
         });
+        playSound(incorrectSoundRef);
         setScore(prev => Math.max(0, prev - 5));
         return;
     }
@@ -182,6 +198,7 @@ export function VectorZen() {
       });
 
       if(currentLevelIndex === levels.length - 1) {
+        playSound(victorySoundRef);
         let finalScore = newScore;
         if (startTime) {
           const endTime = Date.now();
@@ -196,8 +213,11 @@ export function VectorZen() {
           setScore(finalScore);
         }
         saveScore(finalScore);
+      } else {
+        playSound(levelUpSoundRef);
       }
     } else {
+      playSound(incorrectSoundRef);
       setScore(prev => Math.max(0, prev - 10));
       toast({
         variant: "destructive",
@@ -232,6 +252,12 @@ export function VectorZen() {
 
   return (
     <>
+      <audio ref={pairSoundRef} src="/sounds/pair.wav" preload="auto"></audio>
+      <audio ref={correctSoundRef} src="/sounds/correct.wav" preload="auto"></audio>
+      <audio ref={incorrectSoundRef} src="/sounds/incorrect.wav" preload="auto"></audio>
+      <audio ref={levelUpSoundRef} src="/sounds/levelup.wav" preload="auto"></audio>
+      <audio ref={victorySoundRef} src="/sounds/victory.wav" preload="auto"></audio>
+
       <Dialog open={!isGameStarted} onOpenChange={(isOpen) => !isOpen && isGameStarted && setIsGameStarted(true)}>
         <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
           <form onSubmit={handleStartGame}>
@@ -345,3 +371,5 @@ export function VectorZen() {
     </>
   );
 }
+
+    
