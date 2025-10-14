@@ -1,20 +1,46 @@
+/**
+ * @fileoverview Firestore Security Rules for VectorZen App
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes security by enforcing ownership and restricting unauthorized data access.
+ * It accommodates anonymous users while still maintaining a secure environment.
+ *
+ * Data Structure:
+ * - `/userRanks`: Stores ranking data for all users.
+ *
+ * Key Security Decisions:
+ * - Allows read access to `/userRanks` for everyone (public leaderboard).
+ * - Only allows authenticated users (including anonymous) to create entries in `/userRanks`,
+ *   ensuring that the `userId` field matches their `auth.uid`.
+ * - No update or delete operations are permitted on `/userRanks` after creation.
+ * - Validation is limited to checking the `userId` on `create` to prevent spoofing.
+ *
+ * Denormalization for Authorization:
+ * - The `userId` is embedded directly into the `UserRank` documents to avoid additional reads
+ *   during authorization checks.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants public read access to user rankings, but denies all writes.
+     * @description Allows anyone to read the userRanks collection, but only authenticated users can create new ranks.
      * @path /userRanks
-     * @allow (get, list) Public access is allowed for reading user rankings.
-     * @deny (create, update, delete) No one is allowed to create, update, or delete user ranks directly.
-     * @principle Allows public read access while preventing unauthorized modifications.
+     * @allow (get, list): Any user can read the leaderboard.
+     * @allow (create): An authenticated user (anonymous or signed-in) can create a rank entry with their userId.
+     * @deny (create): If the userId in the data does not match the authenticated user's ID.
+     * @deny (update, delete): No user can update or delete a rank entry.
+     * @principle Public Read, Owner-Only Create, No Updates/Deletes.
      */
-    match /userRanks/{userRankId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /userRanks {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Global helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
