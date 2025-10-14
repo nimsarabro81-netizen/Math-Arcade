@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
+import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
   title: 'VectorZen',
@@ -35,7 +36,9 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased', fontBody.variable, fontHeadline.variable)}>
-        {children}
+        <FirebaseClientProvider>
+          {children}
+        </FirebaseClientProvider>
         <Toaster />
       </body>
     </html>

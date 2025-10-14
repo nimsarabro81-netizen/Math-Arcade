@@ -8,6 +8,10 @@ import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useAuth, useFirebase } from "@/firebase";
+import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection } from "firebase/firestore";
 
 type Ball = {
   id: number;
@@ -51,7 +55,16 @@ export function VectorZen() {
   const [correctAnswer, setCorrectAnswer] = useState(0);
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState("");
+  const [score, setScore] = useState(100);
   const { toast } = useToast();
+  const { firestore, user } = useFirebase();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (!user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [user, auth]);
 
   const setupLevel = useCallback((levelIndex: number) => {
     const equation = levels[levelIndex];
@@ -103,6 +116,7 @@ export function VectorZen() {
   
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
+    setScore(prev => Math.max(0, prev - 10)); // Penalize for resetting
   };
 
   const goToNextLevel = () => {
@@ -114,6 +128,19 @@ export function VectorZen() {
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
       setCurrentLevelIndex(prev => prev - 1);
+    }
+  };
+
+  const saveScore = async () => {
+    if (user && firestore) {
+      const rankData = {
+        userId: user.uid,
+        username: user.isAnonymous ? "Anonymous" : user.displayName || "Anonymous",
+        score: score,
+        lastUpdated: new Date().toISOString(),
+      };
+      const ranksCollection = collection(firestore, 'userRanks');
+      await addDocumentNonBlocking(ranksCollection, rankData);
     }
   };
 
@@ -130,16 +157,22 @@ export function VectorZen() {
             title: "Still pairs to make!",
             description: "You need to cancel out all positive and negative pairs first.",
         });
+        setScore(prev => Math.max(0, prev - 5));
         return;
     }
 
     if (parseInt(userAnswer) === currentResult && currentResult === correctAnswer) {
       setIsLevelSolved(true);
+      setScore(prev => prev + 25);
       toast({
         title: "Correct!",
         description: "You solved the level!",
       });
+      if(currentLevelIndex === levels.length - 1) {
+        saveScore();
+      }
     } else {
+      setScore(prev => Math.max(0, prev - 10));
       toast({
         variant: "destructive",
         title: "Not quite!",
@@ -149,6 +182,11 @@ export function VectorZen() {
   };
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
+
+  const startOver = () => {
+    setCurrentLevelIndex(0);
+    setScore(100);
+  }
 
   return (
     <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
@@ -166,7 +204,11 @@ export function VectorZen() {
                     <ChevronRight />
                 </Button>
             </div>
-            <div className="flex gap-2 self-stretch sm:self-auto">
+             <div className="flex items-center gap-4">
+                <div className="text-right">
+                    <p className="text-sm font-medium text-muted-foreground">Score</p>
+                    <p className="font-mono text-2xl font-bold">{score}</p>
+                </div>
                 <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
                   <RotateCw />
                 </Button>
@@ -178,7 +220,12 @@ export function VectorZen() {
           "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
           isLevelSolved && "bg-green-500/10"
         )}>
-          {balls.length === 0 && !isLevelSolved && <p className="text-muted-foreground">Level complete!</p>}
+          {balls.length === 0 && !isLevelSolved && parseInt(userAnswer) === correctAnswer && (
+             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
+                <CheckCircle2 className="w-24 h-24 text-green-500" />
+                <h2 className="text-4xl font-bold font-headline mt-4">Correct!</h2>
+             </div>
+          )}
           {balls.map(ball => (
             <Ball
               key={ball.id}
@@ -189,41 +236,42 @@ export function VectorZen() {
               className={cn(isLevelSolved && "cursor-not-allowed")}
             />
           ))}
-          {isLevelSolved && (
+          {allLevelsComplete && (
             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-              {allLevelsComplete ? (
                 <>
                   <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
                   <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
-                  <p className="text-muted-foreground mt-2">You have completed all the levels.</p>
-                  <Button onClick={() => setCurrentLevelIndex(0)} className="mt-6">Play Again</Button>
+                  <p className="text-muted-foreground mt-2">Final Score: {score}</p>
+                  <Button onClick={startOver} className="mt-6">Play Again</Button>
                 </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-24 h-24 text-green-500" />
-                  <h2 className="text-4xl font-bold font-headline mt-4">Level Complete!</h2>
-                  <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
-                    Next Level <ArrowRight className="ml-2" />
-                  </Button>
-                </>
-              )}
             </div>
           )}
+           {isLevelSolved && !allLevelsComplete && (
+             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
+                <CheckCircle2 className="w-24 h-24 text-green-500" />
+                <h2 className="text-4xl font-bold font-headline mt-4">Level Complete!</h2>
+                <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
+                  Next Level <ArrowRight className="ml-2" />
+                </Button>
+            </div>
+           )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
-        <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
-            <Input 
-                type="number" 
-                placeholder="Your Answer" 
-                value={userAnswer}
-                onChange={(e) => setUserAnswer(e.target.value)}
-                disabled={isLevelSolved}
-                className="text-center text-lg h-12"
-            />
-            <Button type="submit" className="h-12" disabled={isLevelSolved}>Submit</Button>
-        </form>
-      </CardFooter>
+      {!allLevelsComplete && (
+        <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
+          <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
+              <Input 
+                  type="number" 
+                  placeholder="Your Answer" 
+                  value={userAnswer}
+                  onChange={(e) => setUserAnswer(e.target.value)}
+                  disabled={isLevelSolved}
+                  className="text-center text-lg h-12"
+              />
+              <Button type="submit" className="h-12" disabled={isLevelSolved}>Submit</Button>
+          </form>
+        </CardFooter>
+      )}
     </Card>
   );
 }
