@@ -1,46 +1,50 @@
 /**
- * @fileoverview Firestore Security Rules for VectorZen App
+ * @fileoverview Firestore Security Rules for VectorZen app.
  *
  * Core Philosophy:
- * This ruleset prioritizes security by enforcing ownership and restricting unauthorized data access.
- * It accommodates anonymous users while still maintaining a secure environment.
+ * This ruleset provides public read access to user rankings (`/userRanks`) while restricting write access. Only authenticated users can create/update/delete their own rank.
  *
  * Data Structure:
- * - `/userRanks`: Stores ranking data for all users.
+ * The primary data structure is a flat collection of `/userRanks` documents.  Each document represents a user's ranking information.
  *
  * Key Security Decisions:
- * - Allows read access to `/userRanks` for everyone (public leaderboard).
- * - Only allows authenticated users (including anonymous) to create entries in `/userRanks`,
- *   ensuring that the `userId` field matches their `auth.uid`.
- * - No update or delete operations are permitted on `/userRanks` after creation.
- * - Validation is limited to checking the `userId` on `create` to prevent spoofing.
- *
- * Denormalization for Authorization:
- * - The `userId` is embedded directly into the `UserRank` documents to avoid additional reads
- *   during authorization checks.
+ * - User ranks are publicly listable to enable leaderboards and other features.
+ * - Only authenticated users can create, update, and delete their own rank.
+ * - Data validation is relaxed to facilitate rapid prototyping, but ownership is strictly enforced.
+ * - No user listing is possible.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read the userRanks collection, but only authenticated users can create new ranks.
+     * @description Allows public read access to user ranks and restricts write access to authenticated users.
      * @path /userRanks
-     * @allow (get, list): Any user can read the leaderboard.
-     * @allow (create): An authenticated user (anonymous or signed-in) can create a rank entry with their userId.
-     * @deny (create): If the userId in the data does not match the authenticated user's ID.
-     * @deny (update, delete): No user can update or delete a rank entry.
-     * @principle Public Read, Owner-Only Create, No Updates/Deletes.
+     * @allow (get, list) Allows anyone to read user ranks.
+     * @allow (create) Allows authenticated user to create their rank if userId matches their auth.uid.
+     * @allow (update, delete) Allows an authenticated user to update/delete their own rank, if userId matches their auth.uid.
+     * @deny (create, update, delete) Denies unauthenticated requests for creating, updating, or deleting ranks.
+     * @deny (create, update, delete) Denies authenticated requests for updating or deleting ranks that don't belong to the user.
+     * @principle Allows anyone to read, but only owners can write.
      */
-    match /userRanks {
+    match /userRanks/{userRankId} {
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.userId);
+
     }
 
-    // Global helper functions
+    // Define helper functions
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+      return isSignedIn() && isOwner(userId) && resource != null;
     }
   }
 }
