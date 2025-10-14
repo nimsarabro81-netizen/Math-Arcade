@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Ball } from "@/components/ball";
 import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +14,7 @@ import { useAuth, useFirebase } from "@/firebase";
 import { initiateAnonymousSignIn } from "@/firebase/non-blocking-login";
 import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection } from "firebase/firestore";
+import { Label } from "./ui/label";
 
 type Ball = {
   id: number;
@@ -59,6 +62,8 @@ export function VectorZen() {
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const auth = useAuth();
+  const [username, setUsername] = useState("");
+  const [isGameStarted, setIsGameStarted] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -77,8 +82,10 @@ export function VectorZen() {
   }, []);
 
   useEffect(() => {
-    setupLevel(currentLevelIndex);
-  }, [currentLevelIndex, setupLevel]);
+    if (isGameStarted) {
+      setupLevel(currentLevelIndex);
+    }
+  }, [currentLevelIndex, setupLevel, isGameStarted]);
 
   const handleBallClick = (clickedBallId: number) => {
     const ball = balls.find(b => b.id === clickedBallId);
@@ -135,7 +142,7 @@ export function VectorZen() {
     if (user && firestore) {
       const rankData = {
         userId: user.uid,
-        username: user.isAnonymous ? "Anonymous" : user.displayName || "Anonymous",
+        username: username || "Anonymous",
         score: score,
         lastUpdated: new Date().toISOString(),
       };
@@ -181,97 +188,148 @@ export function VectorZen() {
     }
   };
 
+  const handleStartGame = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim()) {
+      setIsGameStarted(true);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Name required",
+        description: "Please enter your name to start.",
+      });
+    }
+  };
+
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
   const startOver = () => {
     setCurrentLevelIndex(0);
     setScore(100);
+    setIsGameStarted(false);
+    setUsername("");
   }
 
   return (
-    <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
-      <CardHeader className="p-4 border-b">
-        <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
-            <div className="flex items-center gap-2">
-                <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0}>
-                    <ChevronLeft />
-                </Button>
-                 <div className="text-center px-4">
-                    <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
-                    <p className="font-mono text-2xl sm:text-3xl font-bold">{levels[currentLevelIndex]}</p>
-                </div>
-                <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
-                    <ChevronRight />
-                </Button>
+    <>
+      <Dialog open={!isGameStarted} onOpenChange={(isOpen) => !isOpen && isGameStarted && setIsGameStarted(true)}>
+        <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
+          <form onSubmit={handleStartGame}>
+            <DialogHeader>
+              <DialogTitle>Welcome to VectorZen</DialogTitle>
+              <DialogDescription>
+                Enter your name to appear on the leaderboard.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="name"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="col-span-3"
+                  placeholder="Your Name"
+                />
+              </div>
             </div>
-             <div className="flex items-center gap-4">
-                <div className="text-right">
-                    <p className="text-sm font-medium text-muted-foreground">Score</p>
-                    <p className="font-mono text-2xl font-bold">{score}</p>
-                </div>
-                <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
-                  <RotateCw />
-                </Button>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className={cn(
-          "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
-          isLevelSolved && "bg-green-500/10"
-        )}>
-          {balls.length === 0 && !isLevelSolved && parseInt(userAnswer) === correctAnswer && (
-             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-                <CheckCircle2 className="w-24 h-24 text-green-500" />
-                <h2 className="text-4xl font-bold font-headline mt-4">Correct!</h2>
-             </div>
-          )}
-          {balls.map(ball => (
-            <Ball
-              key={ball.id}
-              type={ball.value === 1 ? "positive" : "negative"}
-              selected={selectedBallIds.includes(ball.id)}
-              state={ball.state}
-              onClick={() => handleBallClick(ball.id)}
-              className={cn(isLevelSolved && "cursor-not-allowed")}
-            />
-          ))}
-          {allLevelsComplete && (
-            <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-                <>
-                  <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
-                  <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
-                  <p className="text-muted-foreground mt-2">Final Score: {score}</p>
-                  <Button onClick={startOver} className="mt-6">Play Again</Button>
-                </>
-            </div>
-          )}
-           {isLevelSolved && !allLevelsComplete && (
-             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-                <CheckCircle2 className="w-24 h-24 text-green-500" />
-                <h2 className="text-4xl font-bold font-headline mt-4">Level Complete!</h2>
-                <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
-                  Next Level <ArrowRight className="ml-2" />
-                </Button>
-            </div>
-           )}
-        </div>
-      </CardContent>
-      {!allLevelsComplete && (
-        <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
-          <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
-              <Input 
-                  type="number" 
-                  placeholder="Your Answer" 
-                  value={userAnswer}
-                  onChange={(e) => setUserAnswer(e.target.value)}
-                  disabled={isLevelSolved}
-                  className="text-center text-lg h-12"
-              />
-              <Button type="submit" className="h-12" disabled={isLevelSolved}>Submit</Button>
+            <DialogFooter>
+              <Button type="submit">Start Game</Button>
+            </DialogFooter>
           </form>
-        </CardFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {isGameStarted && (
+        <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
+          <CardHeader className="p-4 border-b">
+            <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0}>
+                        <ChevronLeft />
+                    </Button>
+                     <div className="text-center px-4">
+                        <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
+                        <p className="font-mono text-2xl sm:text-3xl font-bold">{levels[currentLevelIndex]}</p>
+                    </div>
+                    <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
+                        <ChevronRight />
+                    </Button>
+                </div>
+                 <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-sm font-medium text-muted-foreground">Score</p>
+                        <p className="font-mono text-2xl font-bold">{score}</p>
+                    </div>
+                    <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
+                      <RotateCw />
+                    </Button>
+                </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className={cn(
+              "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
+              isLevelSolved && "bg-green-500/10"
+            )}>
+              {balls.length === 0 && !isLevelSolved && parseInt(userAnswer) === correctAnswer && (
+                 <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
+                    <CheckCircle2 className="w-24 h-24 text-green-500" />
+                    <h2 className="text-4xl font-bold font-headline mt-4">Correct!</h2>
+                 </div>
+              )}
+              {balls.map(ball => (
+                <Ball
+                  key={ball.id}
+                  type={ball.value === 1 ? "positive" : "negative"}
+                  selected={selectedBallIds.includes(ball.id)}
+                  state={ball.state}
+                  onClick={() => handleBallClick(ball.id)}
+                  className={cn(isLevelSolved && "cursor-not-allowed")}
+                />
+              ))}
+              {allLevelsComplete && (
+                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
+                    <>
+                      <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
+                      <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
+                      <p className="text-muted-foreground mt-2">Final Score: {score}</p>
+                      <Button onClick={startOver} className="mt-6">Play Again</Button>
+                    </>
+                </div>
+              )}
+               {isLevelSolved && !allLevelsComplete && (
+                 <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
+                    <CheckCircle2 className="w-24 h-24 text-green-500" />
+                    <h2 className="text-4xl font-bold font-headline mt-4">Level Complete!</h2>
+                    <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
+                      Next Level <ArrowRight className="ml-2" />
+                    </Button>
+                </div>
+               )}
+            </div>
+          </CardContent>
+          {!allLevelsComplete && (
+            <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
+              <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
+                  <Input 
+                      type="number" 
+                      placeholder="Your Answer" 
+                      value={userAnswer}
+                      onChange={(e) => setUserAnswer(e.target.value)}
+                      disabled={isLevelSolved}
+                      className="text-center text-lg h-12"
+                  />
+                  <Button type="submit" className="h-12" disabled={isLevelSolved}>Submit</Button>
+              </form>
+            </CardFooter>
+          )}
+        </Card>
       )}
-    </Card>
+    </>
   );
 }
+
+    
