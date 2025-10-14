@@ -138,12 +138,12 @@ export function VectorZen() {
     }
   };
 
-  const saveScore = async () => {
+  const saveScore = async (finalScore: number) => {
     if (user && firestore) {
       const rankData = {
         userId: user.uid,
         username: username || "Anonymous",
-        score: score,
+        score: finalScore,
         lastUpdated: new Date().toISOString(),
       };
       const ranksCollection = collection(firestore, 'userRanks');
@@ -168,15 +168,16 @@ export function VectorZen() {
         return;
     }
 
-    if (parseInt(userAnswer) === currentResult && currentResult === correctAnswer) {
+    if (parseInt(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
-      setScore(prev => prev + 25);
+      const newScore = score + 25;
+      setScore(newScore);
       toast({
         title: "Correct!",
         description: "You solved the level!",
       });
       if(currentLevelIndex === levels.length - 1) {
-        saveScore();
+        saveScore(newScore);
       }
     } else {
       setScore(prev => Math.max(0, prev - 10));
@@ -325,3 +326,5 @@ export function VectorZen() {
     </>
   );
 }
+
+    
