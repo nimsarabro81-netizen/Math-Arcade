@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        body: ['var(--font-body)', 'Inter', 'sans-serif'],
+        headline: ['var(--font-headline)', 'Space Grotesk', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -88,10 +88,31 @@ export default {
             height: '0',
           },
         },
+        'ball-in': {
+          '0%': { opacity: '0', transform: 'scale(0.5)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'ball-out': {
+          '0%': { opacity: '1', transform: 'scale(1) rotate(0deg)' },
+          '100%': { opacity: '0', transform: 'scale(0) rotate(180deg)' },
+        },
+        'pop': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'ball-in': 'ball-in 0.3s ease-out forwards',
+        'ball-out': 'ball-out 0.4s ease-in forwards',
+        'pop': 'pop 0.3s ease-out',
+      },
+       backgroundImage: {
+        'grid': 'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)',
+      },
+      backgroundSize: {
+        'grid': '40px 40px',
       },
     },
   },
