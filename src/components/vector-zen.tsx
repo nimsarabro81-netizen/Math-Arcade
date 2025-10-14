@@ -64,6 +64,7 @@ export function VectorZen() {
   const auth = useAuth();
   const [username, setUsername] = useState("");
   const [isGameStarted, setIsGameStarted] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -83,6 +84,9 @@ export function VectorZen() {
 
   useEffect(() => {
     if (isGameStarted) {
+      if (currentLevelIndex === 0) {
+        setStartTime(Date.now());
+      }
       setupLevel(currentLevelIndex);
     }
   }, [currentLevelIndex, setupLevel, isGameStarted]);
@@ -176,8 +180,22 @@ export function VectorZen() {
         title: "Correct!",
         description: "You solved the level!",
       });
+
       if(currentLevelIndex === levels.length - 1) {
-        saveScore(newScore);
+        let finalScore = newScore;
+        if (startTime) {
+          const endTime = Date.now();
+          const durationInSeconds = (endTime - startTime) / 1000;
+          // Time bonus: max 100 points, lose 1 point per second. Minimum 0 bonus.
+          const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
+          finalScore += timeBonus;
+          toast({
+            title: `Time Bonus: +${timeBonus}`,
+            description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
+          });
+          setScore(finalScore);
+        }
+        saveScore(finalScore);
       }
     } else {
       setScore(prev => Math.max(0, prev - 10));
@@ -209,6 +227,7 @@ export function VectorZen() {
     setScore(100);
     setIsGameStarted(false);
     setUsername("");
+    setStartTime(null);
   }
 
   return (
@@ -326,5 +345,3 @@ export function VectorZen() {
     </>
   );
 }
-
-    
