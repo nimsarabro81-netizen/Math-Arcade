@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Ball } from "@/components/ball";
-import { ArrowRight, RotateCw, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Award } from "lucide-react";
+import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,6 @@ const levels = [
   "2 + 2",
   "4 - 4",
   "5 - 8",
-  "-2 + 5",
-  "3 - 7 + 2",
-  "-5 + 5",
-  "6 - 2 - 4",
-  "-3 - 3 + 6",
-  "10 - 5 - 5"
 ];
 
 let nextId = 0;
