@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { VectorZen } from '@/components/vector-zen';
 import { Ranking } from '@/components/ranking';
 
@@ -21,6 +22,11 @@ export default function Home() {
             <Ranking />
           </div>
         </div>
+        <footer className="text-center mt-8">
+          <Link href="/admin" className="text-sm text-muted-foreground hover:text-primary">
+            Admin Panel
+          </Link>
+        </footer>
       </div>
     </main>
   );
