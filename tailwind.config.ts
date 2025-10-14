@@ -99,7 +99,21 @@ export default {
         'pop': {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.05)' },
-        }
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'bounce': {
+          '0%, 100%': {
+            transform: 'translateY(-25%)',
+            animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)',
+          },
+          '50%': {
+            transform: 'translateY(0)',
+            animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +121,8 @@ export default {
         'ball-in': 'ball-in 0.3s ease-out forwards',
         'ball-out': 'ball-out 0.4s ease-in forwards',
         'pop': 'pop 0.3s ease-out',
+        'fade-in': 'fade-in 0.5s ease-in-out',
+        'bounce': 'bounce 1s infinite',
       },
        backgroundImage: {
         'grid': 'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)',

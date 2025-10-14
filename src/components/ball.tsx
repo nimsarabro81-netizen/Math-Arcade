@@ -38,7 +38,7 @@ export function Ball({ className, type, selected, state, ...props }: BallProps) 
       {...props}
       aria-selected={selected}
     >
-      <span className="sr-only">{type} ball</span>
+      <div className={cn("w-4 h-4 rounded-full transition-colors", type === 'positive' ? 'bg-red-500' : 'bg-blue-500')}></div>
     </div>
   );
 }
