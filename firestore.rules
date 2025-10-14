@@ -1,41 +1,20 @@
-/**
- * @fileoverview Firestore Security Rules for VectorZen app.
- *
- * Core Philosophy:
- * This ruleset focuses on allowing all authenticated users, including anonymous users, to create and read user ranking data in the `userRanks` collection. 
- * Data shape is not strictly validated to allow for flexible updates during prototyping.
- *
- * Data Structure:
- * The primary data structure is a flat collection of user rank documents: `/userRanks`.
- *
- * Key Security Decisions:
- * - User listing is enabled by default, as the `userRanks` collection is intended to be public.
- * - Anyone can create a rank. There is no check to prevent spam, as this is prototyping.
- *
- * Denormalization for Authorization:
- *  - The `userId` is included in the `UserRank` documents and must match the authenticated user's `uid`.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows creation and reading of user rank documents in the `userRanks` collection.
+     * @description Grants public read access to user rankings, but denies all writes.
      * @path /userRanks
-     * @allow (create) - Any authenticated user can create a rank, provided the userId matches their UID.
-     * @allow (get, list) - Any user can read rank information.
-     * @deny (update, delete) - No user can update or delete rank information.
-     * @principle Allows public reading and authenticated creation of user ranks.
+     * @allow (get, list) Public access is allowed for reading user rankings.
+     * @deny (create, update, delete) No one is allowed to create, update, or delete user ranks directly.
+     * @principle Allows public read access while preventing unauthorized modifications.
      */
-    match /userRanks {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
-    }
-
-    // Helper function to check if the user is signed in.
-    function isSignedIn() {
-      return request.auth != null;
+    match /userRanks/{userRankId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
