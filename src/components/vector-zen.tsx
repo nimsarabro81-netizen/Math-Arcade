@@ -274,12 +274,6 @@ export function VectorZen() {
               "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
               isLevelSolved && "bg-green-500/10"
             )}>
-              {balls.length === 0 && !isLevelSolved && parseInt(userAnswer) === correctAnswer && (
-                 <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-                    <CheckCircle2 className="w-24 h-24 text-green-500" />
-                    <h2 className="text-4xl font-bold font-headline mt-4">Correct!</h2>
-                 </div>
-              )}
               {balls.map(ball => (
                 <Ball
                   key={ball.id}
@@ -331,5 +325,3 @@ export function VectorZen() {
     </>
   );
 }
-
-    
