@@ -7,6 +7,7 @@ import { Ball } from "@/components/ball";
 import { ArrowRight, RotateCw, Sparkles, ChevronLeft, ChevronRight, CheckCircle2, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 type Ball = {
   id: number;
@@ -25,6 +26,9 @@ const levels = [
   "-2 + 5",
   "3 - 7 + 2",
   "-5 + 5",
+  "6 - 2 - 4",
+  "-3 - 3 + 6",
+  "10 - 5 - 5"
 ];
 
 let nextId = 0;
@@ -52,6 +56,7 @@ export function VectorZen() {
   const [selectedBallIds, setSelectedBallIds] = useState<number[]>([]);
   const [correctAnswer, setCorrectAnswer] = useState(0);
   const [isLevelSolved, setIsLevelSolved] = useState(false);
+  const [userAnswer, setUserAnswer] = useState("");
   const { toast } = useToast();
 
   const setupLevel = useCallback((levelIndex: number) => {
@@ -61,6 +66,7 @@ export function VectorZen() {
     setCorrectAnswer(answer);
     setSelectedBallIds([]);
     setIsLevelSolved(false);
+    setUserAnswer("");
   }, []);
 
   useEffect(() => {
@@ -101,23 +107,6 @@ export function VectorZen() {
     return () => clearTimeout(timer);
   }, [selectedBallIds]);
   
-  const solveAll = () => {
-    if (isLevelSolved) return;
-    const positives = balls.filter(b => b.value === 1 && b.state !== 'exiting');
-    const negatives = balls.filter(b => b.value === -1 && b.state !== 'exiting');
-    const pairsToMake = Math.min(positives.length, negatives.length);
-
-    if (pairsToMake === 0) {
-      toast({ title: "Nothing to pair", description: "No available positive and negative balls to cancel out." });
-      return;
-    }
-
-    const positiveIdsToPair = positives.slice(0, pairsToMake).map(b => b.id);
-    const negativeIdsToPair = negatives.slice(0, pairsToMake).map(b => b.id);
-    const allIdsToPair = [...positiveIdsToPair, ...negativeIdsToPair];
-    setSelectedBallIds(allIdsToPair);
-  };
-  
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
   };
@@ -134,22 +123,36 @@ export function VectorZen() {
     }
   };
 
-  const result = useMemo(() => {
-    return balls.filter(b => b.state !== 'exiting').reduce((sum, b) => sum + b.value, 0);
-  }, [balls]);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLevelSolved) return;
 
-  useEffect(() => {
-    if (balls.length > 0 && result === correctAnswer) {
-      const hasUnpaired = balls.some(b1 => balls.some(b2 => b1.value === -b2.value));
-      if (!hasUnpaired) {
-        setIsLevelSolved(true);
+    const currentResult = balls.filter(b => b.state !== 'exiting').reduce((sum, b) => sum + b.value, 0);
+    const hasUnpaired = balls.some(b1 => balls.some(b2 => b1.value === -b2.value && b1.state !== 'exiting' && b2.state !== 'exiting'));
+
+    if (hasUnpaired) {
         toast({
-          title: "Correct!",
-          description: "You solved the level!",
+            variant: "destructive",
+            title: "Still pairs to make!",
+            description: "You need to cancel out all positive and negative pairs first.",
         });
-      }
+        return;
     }
-  }, [result, correctAnswer, balls, toast]);
+
+    if (parseInt(userAnswer) === currentResult && currentResult === correctAnswer) {
+      setIsLevelSolved(true);
+      toast({
+        title: "Correct!",
+        description: "You solved the level!",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Not quite!",
+        description: "Your answer is incorrect. Try again.",
+      });
+    }
+  };
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
@@ -163,18 +166,15 @@ export function VectorZen() {
                 </Button>
                  <div className="text-center px-4">
                     <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
-                    <p className="font-mono text-xl font-bold">{levels[currentLevelIndex]}</p>
+                    <p className="font-mono text-2xl sm:text-3xl font-bold">{levels[currentLevelIndex]}</p>
                 </div>
-                <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={currentLevelIndex === levels.length - 1}>
+                <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
                     <ChevronRight />
                 </Button>
             </div>
             <div className="flex gap-2 self-stretch sm:self-auto">
-                <Button onClick={solveAll} variant="secondary" className="flex-grow sm:flex-grow-0" disabled={isLevelSolved}>
-                <Sparkles className="mr-2" /> Auto-Solve
-                </Button>
-                <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level">
-                <RotateCw />
+                <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
+                  <RotateCw />
                 </Button>
             </div>
         </div>
@@ -218,10 +218,17 @@ export function VectorZen() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
-        <div className="text-center">
-            <p className="text-sm text-muted-foreground font-headline tracking-widest uppercase">Result</p>
-            <h3 key={result} className="font-headline text-5xl font-bold text-primary animate-pop">{result}</h3>
-        </div>
+        <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
+            <Input 
+                type="number" 
+                placeholder="Your Answer" 
+                value={userAnswer}
+                onChange={(e) => setUserAnswer(e.target.value)}
+                disabled={isLevelSolved}
+                className="text-center text-lg h-12"
+            />
+            <Button type="submit" className="h-12" disabled={isLevelSolved}>Submit</Button>
+        </form>
       </CardFooter>
     </Card>
   );
