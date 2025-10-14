@@ -1,50 +1,63 @@
 /**
- * @fileoverview Firestore Security Rules for VectorZen app.
+ * @fileoverview Firestore Security Rules for VectorZen.
  *
- * Core Philosophy:
- * This ruleset provides public read access to user rankings (`/userRanks`) while restricting write access. Only authenticated users can create/update/delete their own rank.
+ * Core Philosophy: This ruleset prioritizes security and data integrity while allowing rapid prototyping.
+ *  It is designed to prevent unauthorized data access and modification while remaining flexible on data shapes.
  *
- * Data Structure:
- * The primary data structure is a flat collection of `/userRanks` documents.  Each document represents a user's ranking information.
+ * Data Structure: The primary collection is `/userRanks`, which stores user ranking data.
  *
  * Key Security Decisions:
- * - User ranks are publicly listable to enable leaderboards and other features.
- * - Only authenticated users can create, update, and delete their own rank.
- * - Data validation is relaxed to facilitate rapid prototyping, but ownership is strictly enforced.
- * - No user listing is possible.
+ *  - Public Read Access: The `/userRanks` collection is publicly readable. This allows for displaying leaderboards.
+ *  - Owner-Only Writes: Only the owner (a user with a matching `userId`) can create, update, or delete their own rank data.
+ *
+ * Denormalization for Authorization: The `UserRank` documents are required to have a `userId` field that matches the authenticated user's `uid`.
+ *  This avoids the need for costly and complex `get()` operations in the rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to user ranks and restricts write access to authenticated users.
+     * @description Manages access control for the `/userRanks` collection.
      * @path /userRanks
-     * @allow (get, list) Allows anyone to read user ranks.
-     * @allow (create) Allows authenticated user to create their rank if userId matches their auth.uid.
-     * @allow (update, delete) Allows an authenticated user to update/delete their own rank, if userId matches their auth.uid.
-     * @deny (create, update, delete) Denies unauthenticated requests for creating, updating, or deleting ranks.
-     * @deny (create, update, delete) Denies authenticated requests for updating or deleting ranks that don't belong to the user.
-     * @principle Allows anyone to read, but only owners can write.
+     * @allow (get, list): Anyone can read the leaderboard.
+     * @allow (create): A user can create their own rank if the `userId` matches their `uid`.
+     * @allow (update, delete): A user can update/delete their rank if the `userId` matches their `uid` and the document exists.
+     * @deny (create, update, delete): If the `userId` does not match the `uid`, or the record does not exist.
+     * @principle Public read, owner-only write access for user ranking data.
      */
     match /userRanks/{userRankId} {
       allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.userId);
-
+      allow update, delete: if isExistingOwner(resource.data.userId);
     }
 
-    // Define helper functions
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is authenticated, false otherwise.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the requesting user is the owner of the resource (based on userId).
+     * @param {string} userId - The userId to compare against the request's auth UID.
+     * @return {bool} True if the user is the owner, false otherwise.
+     */
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * @description Checks if the requesting user is the owner of the resource and that the resource exists.
+     * @param {string} userId - The userId to compare against the request's auth UID.
+     * @return {bool} True if the user is the existing owner, false otherwise.
+     */
     function isExistingOwner(userId) {
-      return isSignedIn() && isOwner(userId) && resource != null;
+      return isOwner(userId) && resource != null;
     }
   }
 }
