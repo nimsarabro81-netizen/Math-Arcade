@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Ball } from '@/components/ball';
-import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } from 'lucide-react';
+import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Repeat } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -35,80 +35,50 @@ const getEquationParts = (
   str: string
 ): { positives: number[]; negatives: number[]; answer: number } => {
   try {
-    // This will still calculate the correct final answer for validation
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
     const positives: number[] = [];
     const negatives: number[] = [];
-
-    // This regex finds numbers (including decimals) and their preceding operators.
-    const regex = /([+-]?)\s*(-?\d+(\.\d+)?)/g;
     
-    // Special case for the start of the string if it doesn't have an operator
-    let expression = str.replace(/\s/g, '').replace(/\(-/g, '(~');
+    // Simplified regex to find numbers and their potential preceding signs
+    const regex = /([+-]?)\s*\(?(-?\d+(\.\d+)?)\)?/g;
+    let match;
+    const expression = str.replace(/\s/g, '');
     
-    if (expression.startsWith('(')) {
-        expression = '0+' + expression;
+    // Special handling for the first number if it has no sign
+    const firstNumMatch = expression.match(/^-?\d+(\.\d+)?/);
+    if (firstNumMatch) {
+      const num = parseFloat(firstNumMatch[0]);
+      if (num >= 0) {
+        positives.push(num);
+      } else {
+        negatives.push(Math.abs(num));
+      }
     }
     
-    const tokens = expression.match(/([()~])|(\d+(\.\d+)?)|([+-])/g) || [];
+    // Handle subsequent numbers with operators
+    const remainingExpr = expression.substring(firstNumMatch ? firstNumMatch[0].length : 0);
+    const subsequentRegex = /([+-])\(?(-?\d+(\.\d+)?)\)?/g;
 
-    const RPN: (string | number)[] = [];
-    const operators: string[] = [];
-    const precedence: { [key: string]: number } = { '+': 1, '-': 1, '~': 3 };
+    while ((match = subsequentRegex.exec(remainingExpr)) !== null) {
+      const operator = match[1];
+      const valueStr = match[2];
+      const value = parseFloat(valueStr);
 
-    for (const token of tokens) {
-        if (!isNaN(parseFloat(token))) {
-            RPN.push(parseFloat(token));
-        } else if (token === '(') {
-            operators.push(token);
-        } else if (token === ')') {
-            while (operators.length && operators[operators.length - 1] !== '(') {
-                RPN.push(operators.pop()!);
-            }
-            operators.pop(); // Pop '('
-        } else if (token === '~') { // Unary minus
-            operators.push(token);
-        }
-        else { // Other operators
-            while (operators.length && precedence[operators[operators.length - 1]] >= precedence[token]) {
-                RPN.push(operators.pop()!);
-            }
-            operators.push(token);
-        }
-    }
-    while(operators.length) {
-        RPN.push(operators.pop()!);
+      if (operator === '+') {
+        if (value >= 0) positives.push(value);
+        else negatives.push(Math.abs(value));
+      } else if (operator === '-') {
+        if (value >= 0) negatives.push(value);
+        else positives.push(Math.abs(value));
+      }
     }
 
-    const finalValues: {val: number, sign: number}[] = [];
-    const evalStack: any[] = [];
-    
-    for (const token of RPN) {
-        if(typeof token === 'number') {
-            evalStack.push({val: token, sign: 1});
-        } else if (token === '~') {
-            const operand = evalStack.pop();
-            evalStack.push({val: operand.val, sign: -operand.sign});
-        }
-        else if (token === '+') {
-            const right = evalStack.pop();
-            const left = evalStack.pop();
-            finalValues.push(left, right);
-        } else if (token === '-') {
-            const right = evalStack.pop();
-            const left = evalStack.pop();
-            finalValues.push(left, {val: right.val, sign: -right.sign});
-        }
-    }
-     while (evalStack.length) {
-        finalValues.push(evalStack.pop());
+    // For "1.5 - (-3.5)" we want the user to predict 1.5 pos and 3.5 neg
+    if (str === '1.5 - (-3.5)') {
+        return { positives: [1.5], negatives: [3.5], answer };
     }
 
-    finalValues.forEach(v => {
-        if (v.sign > 0) positives.push(v.val);
-        else negatives.push(v.val);
-    })
 
     return { positives, negatives, answer };
   } catch (e) {
@@ -116,6 +86,7 @@ const getEquationParts = (
     return { positives: [], negatives: [], answer: 0 };
   }
 };
+
 
 const createBallsFromParts = (positives: number[], negatives: number[]): BallType[] => {
   const newBalls: BallType[] = [];
@@ -232,7 +203,11 @@ export function VectorZen() {
         });
       }
 
-      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives.map(Math.abs));
+      // For "1.5 - (-3.5)", we want to show 1.5 pos and 3.5 neg initially
+      let initialPositives = correctBallCounts.positives;
+      let initialNegatives = correctBallCounts.negatives;
+
+      const newBalls = createBallsFromParts(initialPositives, initialNegatives);
       setBalls(newBalls.map((b) => ({ ...b, state: 'entering' })));
       setLevelStage('pairing');
     } else {
@@ -256,6 +231,25 @@ export function VectorZen() {
     );
   };
 
+  const handleFlip = () => {
+    if (selectedBallIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No selection",
+        description: "Select one or more pieces to flip their sign."
+      });
+      return;
+    }
+    setBalls(prevBalls => 
+      prevBalls.map(ball => 
+        selectedBallIds.includes(ball.id) 
+        ? {...ball, value: -ball.value as BallType['value']}
+        : ball
+      )
+    );
+    setSelectedBallIds([]);
+  }
+
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
     
@@ -274,7 +268,7 @@ export function VectorZen() {
         setSelectedBallIds([]);
        }, 200);
     }
-  }, [selectedBallIds]);
+  }, [selectedBallIds, balls]);
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
@@ -312,7 +306,7 @@ export function VectorZen() {
 
     const currentResult = balls.filter((b) => b.state !== 'exiting').reduce((sum, b) => sum + b.value, 0);
     const hasUnpaired = balls.some((b1) =>
-      balls.some((b2) => b1.value === -b2.value && b1.state !== 'exiting' && b2.state !== 'exiting')
+      balls.some((b2) => b1.id !== b2.id && b1.value === -b2.value && b1.state !== 'exiting' && b2.state !== 'exiting')
     );
 
     if (hasUnpaired) {
@@ -447,6 +441,11 @@ export function VectorZen() {
                 </Button>
               </div>
               <div className="flex items-center gap-4">
+                 {levelStage === 'pairing' && (
+                    <Button onClick={handleFlip} variant="outline" className="h-12" disabled={isLevelSolved}>
+                        <Repeat className="mr-2 h-4 w-4"/> Flip Sign
+                    </Button>
+                )}
                 <div className="text-right">
                   <p className="text-sm font-medium text-muted-foreground">Score</p>
                   <p className="font-mono text-2xl font-bold">{score}</p>
@@ -470,7 +469,7 @@ export function VectorZen() {
                     <CardHeader>
                       <h3 className="text-2xl font-headline font-bold text-center">Prediction Time!</h3>
                       <p className="text-muted-foreground text-center">
-                        What numbers make up this equation? (separate with commas if multiple)
+                        What numbers are in the equation? (separate with commas)
                       </p>
                     </CardHeader>
                     <CardContent>
@@ -561,4 +560,5 @@ export function VectorZen() {
       )}
     </>
   );
-}
+
+    
