@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Ball } from '@/components/ball';
@@ -17,7 +17,8 @@ type BallType = {
 };
 
 type AnimatedBall = BallType & {
-  state: 'entering' | 'idle' | 'exiting' | 'pairing';
+  state: 'entering' | 'idle' | 'exiting' | 'pairing' | 'pairing-1' | 'pairing-2' | 'pairing-exit';
+  style?: React.CSSProperties;
 };
 
 type LevelStage = 'prediction' | 'pairing';
@@ -112,6 +113,9 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
   const [correctAnswer, setCorrectAnswer] = useState(0);
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
+  
+  const boardRef = useRef<HTMLDivElement>(null);
+
 
   const { toast } = useToast();
 
@@ -191,7 +195,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   const handleBallClick = (clickedBallId: number) => {
     const ball = balls.find((b) => b.id === clickedBallId);
-    if (!ball || ball.state === 'exiting' || isLevelSolved) return;
+    if (!ball || ball.state.startsWith('pairing') || ball.state === 'exiting' || isLevelSolved) return;
 
     setSelectedBallIds((prevIds) =>
       prevIds.includes(clickedBallId)
@@ -221,37 +225,61 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
-  
-    let isPair = false;
-  
-    setBalls((currentBalls) => {
-      const pair = currentBalls.filter((b) => selectedBallIds.includes(b.id));
-      if (pair.length < 2) return currentBalls;
-      
-      isPair = pair[0].value === -pair[1].value;
-  
-      if (isPair) {
-        return currentBalls.map((b) =>
-          selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
-        );
-      } else {
-        return currentBalls;
-      }
-    });
-  
+
+    const pair = balls.filter(b => selectedBallIds.includes(b.id));
+    if (pair.length < 2) return;
+    
+    const isPair = pair[0].value === -pair[1].value;
+
     if (isPair) {
-      const timer = setTimeout(() => {
-        setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
+      const ball1El = document.querySelector(`[data-ball-id='${pair[0].id}']`) as HTMLElement;
+      const ball2El = document.querySelector(`[data-ball-id='${pair[1].id}']`) as HTMLElement;
+      const board = boardRef.current;
+
+      if (ball1El && ball2El && board) {
+        const boardRect = board.getBoundingClientRect();
+        const b1Rect = ball1El.getBoundingClientRect();
+        const b2Rect = ball2El.getBoundingClientRect();
+
+        // Target center point of the board
+        const targetX = boardRect.width / 2;
+        const targetY = boardRect.height / 2;
+
+        setBalls(currentBalls => currentBalls.map(b => {
+          if (b.id === pair[0].id) {
+            const dx = targetX - (b1Rect.left - boardRect.left + b1Rect.width / 2);
+            const dy = targetY - (b1Rect.top - boardRect.top + b1Rect.height / 2);
+            return { ...b, state: 'pairing-1', style: { transform: `translate(${dx}px, ${dy}px)` } };
+          }
+          if (b.id === pair[1].id) {
+            const dx = targetX - (b2Rect.left - boardRect.left + b2Rect.width / 2);
+            const dy = targetY - (b2Rect.top - boardRect.top + b2Rect.height / 2);
+            return { ...b, state: 'pairing-2', style: { transform: `translate(${dx}px, ${dy}px)` } };
+          }
+          return b;
+        }));
+      }
+
+      const timer1 = setTimeout(() => {
+        setBalls(currentBalls => currentBalls.map(b => 
+            selectedBallIds.includes(b.id) ? { ...b, state: 'pairing-exit' } : b
+        ));
+      }, 400); // Wait for pairing animation
+
+      const timer2 = setTimeout(() => {
+        setBalls(prev => prev.filter(b => !selectedBallIds.includes(b.id)).map(b => ({ ...b, style: {} })));
         setSelectedBallIds([]);
-      }, 500); // Duration of the pairing animation
-      return () => clearTimeout(timer);
+      }, 900); // Wait for fade out and then remove
+      
+      return () => { clearTimeout(timer1); clearTimeout(timer2); };
     } else {
-      const timer = setTimeout(() => {
-        setSelectedBallIds([]);
-      }, 200);
-      return () => clearTimeout(timer);
+        const timer = setTimeout(() => {
+          setSelectedBallIds([]);
+        }, 200);
+        return () => clearTimeout(timer);
     }
   }, [selectedBallIds]);
+
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
@@ -266,7 +294,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex((prev) => prev - 1);
+      setCurrentLevelIndex((prev) => prev + 1);
     }
   };
 
@@ -275,10 +303,27 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     if (isLevelSolved) return;
 
     const currentResult = balls.filter((b) => b.state !== 'exiting').reduce((sum, b) => sum + b.value, 0);
-    const hasUnpaired = balls.some((b1) =>
-      balls.some((b2) => b1.id !== b2.id && b1.value === -b2.value && b1.state !== 'exiting' && b2.state !== 'exiting')
-    );
+    
+    // Create a copy of the balls to manipulate for checking pairs
+    let checkBalls = [...balls.filter(b => b.state !== 'exiting' && !b.state.startsWith('pairing'))];
+    let hasUnpaired = false;
 
+    while (checkBalls.length > 0) {
+      const currentBall = checkBalls.pop();
+      if (!currentBall) break;
+      
+      const pairIndex = checkBalls.findIndex(b => b.value === -currentBall.value);
+
+      if (pairIndex !== -1) {
+        // Found a pair, remove it from the check array and set flag
+        checkBalls.splice(pairIndex, 1);
+        hasUnpaired = true; // Set flag because we found a pair that *should* have been removed by the user
+      } else {
+        // This ball has no pair, put it back (or do nothing, as we just check if any pair is found)
+      }
+    }
+    
+    // We reverse the logic: the toast should show if we found any pairs during our check
     if (hasUnpaired) {
       toast({
         variant: 'destructive',
@@ -288,6 +333,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       onScoreChange(Math.max(0, score - 5));
       return;
     }
+
 
     if (parseFloat(userAnswer) === currentResult && parseFloat(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
@@ -369,6 +415,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
           </CardHeader>
           <CardContent className="p-0">
             <div
+              ref={boardRef}
               className={cn(
                 'relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500',
                 isLevelSolved && 'bg-green-500/10'
@@ -420,10 +467,12 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
               {balls.map((ball) => (
                 <Ball
                   key={ball.id}
+                  data-ball-id={ball.id}
                   type={ball.value > 0 ? 'positive' : 'negative'}
                   size={getBallSize(ball.value)}
                   selected={selectedBallIds.includes(ball.id)}
                   state={ball.state}
+                  style={ball.style}
                   onClick={() => handleBallClick(ball.id)}
                   className={cn(isLevelSolved && 'cursor-not-allowed')}
                 />
