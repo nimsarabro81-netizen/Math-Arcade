@@ -39,34 +39,27 @@ const getEquationParts = (
     const expression = str.replace(/\s/g, '');
 
     // Regex to tokenize the expression into numbers, operators, and parentheses
-    const tokens = expression.match(/-?\d*\.?\d+|[+*/()-]/g) || [];
+    const tokens = expression.match(/(\d+\.?\d*)|[+*/()-]/g) || [];
     
     const numbers: number[] = [];
-    let currentSign = 1;
+    let sign = 1;
 
     for (let i = 0; i < tokens.length; i++) {
         const token = tokens[i];
-
         if (token === '+') {
-            currentSign = 1;
+            sign = 1;
         } else if (token === '-') {
-            currentSign = -1;
+            sign = -1;
+        } else if (token === '(') {
+            // If the next token is a '-', it's a negative number inside parens.
+            // Check for -(- pattern
+            if (tokens[i+1] === '-') {
+                sign = sign * -1;
+                i++; // consume the inner '-'
+            }
         } else if (!isNaN(parseFloat(token))) {
-            const num = parseFloat(token);
-            // Handle cases like '5-8' where the '-' is an operator, not a sign of the number
-            if (numbers.length === 0 && i === 0) { // First number
-                 numbers.push(num);
-            } else {
-                 numbers.push(currentSign * num);
-            }
-            // Reset sign after consuming a number if the next token is not an operator
-            if (i + 1 < tokens.length && !['+', '-'].includes(tokens[i+1])) {
-              currentSign = 1;
-            }
-        } else if (token === '(' && currentSign === -1 && tokens[i+1] === '-') {
-           // This is for the case '-(-...'
-           currentSign = 1; // Flip the sign
-           i++; // Skip the inner '-'
+            numbers.push(sign * parseFloat(token));
+            sign = 1; // reset sign
         }
     }
 
@@ -520,5 +513,7 @@ export function VectorZen() {
     </>
   );
 }
+
+    
 
     
