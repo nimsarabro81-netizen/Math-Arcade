@@ -37,6 +37,10 @@ const getEquationParts = (
   try {
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
+    if (str === '1.5 - (-3.5)') {
+        return { positives: [1.5], negatives: [3.5], answer };
+    }
+
     const positives: number[] = [];
     const negatives: number[] = [];
     
@@ -73,12 +77,6 @@ const getEquationParts = (
         else positives.push(Math.abs(value));
       }
     }
-
-    // For "1.5 - (-3.5)" we want the user to predict 1.5 pos and 3.5 neg
-    if (str === '1.5 - (-3.5)') {
-        return { positives: [1.5], negatives: [3.5], answer };
-    }
-
 
     return { positives, negatives, answer };
   } catch (e) {
@@ -203,11 +201,7 @@ export function VectorZen() {
         });
       }
 
-      // For "1.5 - (-3.5)", we want to show 1.5 pos and 3.5 neg initially
-      let initialPositives = correctBallCounts.positives;
-      let initialNegatives = correctBallCounts.negatives;
-
-      const newBalls = createBallsFromParts(initialPositives, initialNegatives);
+      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives);
       setBalls(newBalls.map((b) => ({ ...b, state: 'entering' })));
       setLevelStage('pairing');
     } else {
@@ -560,5 +554,4 @@ export function VectorZen() {
       )}
     </>
   );
-
-    
+}
