@@ -21,7 +21,7 @@ type AnimatedBall = BallType & {
 
 type GamePhase = 'setup' | 'playing';
 
-const levels = ['3 x 2', '3 x -2', '-3 x 2', '-3 x -2'];
+const levels = ['3 x 2', '3 x -2', '-3 x 2'];
 
 let nextId = 0;
 
