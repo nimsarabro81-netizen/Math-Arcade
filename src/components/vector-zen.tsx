@@ -384,14 +384,6 @@ export function VectorZen() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-             <div className={cn("p-4 bg-muted/20 border-b flex items-center justify-center gap-4", levelStage !== 'pairing' && "hidden")}>
-                <Button onClick={() => handleAddBall(1)} variant="outline" disabled={isLevelSolved}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Positive
-                </Button>
-                <Button onClick={() => handleAddBall(-1)} variant="outline" disabled={isLevelSolved}>
-                    <Minus className="mr-2 h-4 w-4" /> Add Negative
-                </Button>
-            </div>
             <div className={cn(
               "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
               isLevelSolved && "bg-green-500/10"
@@ -412,7 +404,7 @@ export function VectorZen() {
                                       type="number"
                                       value={prediction.positives}
                                       onChange={(e) => setPrediction(p => ({...p, positives: e.target.value}))}
-                                      placeholder="e.g., 3"
+                                      placeholder="Count"
                                   />
                               </div>
                                <div className="flex items-center gap-4">
@@ -422,7 +414,7 @@ export function VectorZen() {
                                       type="number"
                                       value={prediction.negatives}
                                       onChange={(e) => setPrediction(p => ({...p, negatives: e.target.value}))}
-                                      placeholder="e.g., 1"
+                                      placeholder="Count"
                                   />
                               </div>
                               <Button type="submit" className="w-full">
@@ -482,5 +474,3 @@ export function VectorZen() {
     </>
   );
 }
-
-    
