@@ -37,26 +37,48 @@ const levels = [
 let nextId = 0;
 
 const getEquationParts = (str: string): { positives: number, negatives: number, answer: number } => {
-    const matches = str.trim().match(/[+-]?\s*\d+/g);
-    if (!matches) return { positives: 0, negatives: 0, answer: 0 };
+    try {
+        // Use a safe method to evaluate the mathematical expression
+        const answer = new Function('return ' + str)();
 
-    let positives = 0;
-    let negatives = 0;
-    let answer = 0;
-
-    matches.forEach(match => {
-        const num = parseInt(match.replace(/\s/g, ''));
-        if (isNaN(num)) return;
+        // This part is tricky with decimals, as the game is based on integer balls.
+        // We will round for the purpose of ball creation.
+        const firstTermMatch = str.match(/^(-?\d+(\.\d+)?)/);
+        const firstTerm = firstTermMatch ? parseFloat(firstTermMatch[0]) : 0;
         
-        answer += num;
-        if (num > 0) {
-            positives += num;
-        } else {
-            negatives += Math.abs(num);
-        }
-    });
-    return { positives, negatives, answer };
+        const otherTerms = str.substring(firstTermMatch ? firstTermMatch[0].length : 0);
+        const otherTermMatches = otherTerms.match(/[+-]\s*(-?\d+(\.\d+)?)/g) || [];
+
+        let allNumbers: number[] = [firstTerm];
+        otherTermMatches.forEach(term => {
+            const cleanedTerm = term.replace(/\s/g, '');
+            // Handle double negatives like --3.5 or -(-3.5)
+            if (cleanedTerm.startsWith('--') || cleanedTerm.startsWith('-(')) {
+                allNumbers.push(parseFloat(cleanedTerm.replace(/--|\(|\)/g, '')));
+            } else {
+                 allNumbers.push(parseFloat(cleanedTerm));
+            }
+        });
+        
+        let positives = 0;
+        let negatives = 0;
+
+        allNumbers.forEach(num => {
+            if (num > 0) {
+                positives += num;
+            } else {
+                negatives += Math.abs(num);
+            }
+        });
+
+        // Since the game uses integer balls, we round the totals.
+        return { positives: Math.round(positives), negatives: Math.round(negatives), answer: answer };
+    } catch (e) {
+        console.error("Could not parse equation:", e);
+        return { positives: 0, negatives: 0, answer: 0 };
+    }
 }
+
 
 const createBallsFromParts = (positives: number, negatives: number): BallType[] => {
     const newBalls: BallType[] = [];
@@ -304,16 +326,6 @@ export function VectorZen() {
     }
   };
 
-  const handleAddBall = (value: 1 | -1) => {
-    if (isLevelSolved || levelStage !== 'pairing') return;
-    const newBall: AnimatedBall = {
-      id: nextId++,
-      value,
-      state: 'entering'
-    };
-    setBalls(prev => [...prev, newBall]);
-  }
-
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
   const startOver = () => {
@@ -474,3 +486,5 @@ export function VectorZen() {
     </>
   );
 }
+
+    
