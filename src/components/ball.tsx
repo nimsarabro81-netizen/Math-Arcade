@@ -24,10 +24,7 @@ const ballVariants = cva(
         entering: "animate-ball-in",
         idle: "",
         exiting: "animate-ball-out",
-        pairing: "", // generic pairing state
-        'pairing-1': "animate-pair-annihilate-1",
-        'pairing-2': "animate-pair-annihilate-2",
-        'pairing-exit': "animate-fade-out-zero"
+        pairing: "animate-fade-out-zero"
       }
     },
     compoundVariants: [
@@ -63,12 +60,11 @@ const ballVariants = cva(
 
 export interface BallProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof ballVariants> {}
 
-export function Ball({ className, type, selected, state, size, style, ...props }: BallProps) {
+export function Ball({ className, type, selected, state, size, ...props }: BallProps) {
   return (
     <div
       className={cn(ballVariants({ type, selected, state, size }), className)}
       {...props}
-      style={style}
       aria-selected={selected}
     >
       <div className={cn(
