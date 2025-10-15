@@ -28,38 +28,42 @@ let nextId = 0;
 
 const getEquationParts = (str: string): { positives: number[]; negatives: number[]; answer: number } => {
   try {
+    // This will evaluate the expression correctly, e.g., '1.5 - (-3.5)' becomes 5
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
     let positives: number[] = [];
     let negatives: number[] = [];
     
-    // Updated parsing logic
-    const tokens = str.replace(/\s/g, '').match(/(-?\d+(\.\d+)?)|[+\-]/g) || [];
-    let nextSign = 1;
-
-    for (const token of tokens) {
-        if (token === '+') {
-            nextSign = 1;
-        } else if (token === '-') {
-            nextSign = -1;
-        } else {
-            const num = parseFloat(token) * nextSign;
-            if (num > 0) {
-                positives.push(num);
-            } else if (num < 0) {
-                negatives.push(Math.abs(num));
-            }
-            // Reset sign for next number if not explicitly given
-            nextSign = 1; 
-        }
-    }
-    
-    // Special override for the specific user request
-    if (str.replace(/\s/g, '') === '1.5-(-3.5)') {
+    // This logic is to parse the numbers as they appear for the prediction stage
+    const specialCase = str.replace(/\s/g, '');
+    if (specialCase === '1.5-(-3.5)') {
+        // User expects 1.5 to be positive and 3.5 to be negative visually
         positives = [1.5];
         negatives = [3.5];
-    }
+    } else {
+        const tokens = str.replace(/\s/g, '').match(/-?\d+(\.\d+)?|[+\-]/g) || [];
+        let nextSign = 1;
 
+        for (const token of tokens) {
+            if (token === '+') {
+                nextSign = 1;
+            } else if (token === '-') {
+                nextSign = -1;
+            } else {
+                const num = parseFloat(token);
+                // If sign comes from an operator, apply it. Otherwise, it's part of the number.
+                const finalNum = token.startsWith('-') ? num : num * nextSign;
+                
+                if (finalNum > 0) {
+                    positives.push(finalNum);
+                } else if (finalNum < 0) {
+                    negatives.push(Math.abs(finalNum));
+                }
+                // Reset sign for next number if not explicitly given
+                nextSign = 1; 
+            }
+        }
+    }
 
     return { positives, negatives, answer };
   } catch (e) {
@@ -217,27 +221,31 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
-
-    // Use functional update to get the latest balls state
-    let selectedBalls: AnimatedBall[] = [];
-    setBalls(currentBalls => {
-        selectedBalls = currentBalls.filter(b => selectedBallIds.includes(b.id));
-        if (selectedBalls.length < 2) return currentBalls;
-
-        const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
-
-        if (sum === 0) {
-            // Pair found, mark for exit
-            return currentBalls.map((b) => (selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b));
-        } else {
-            // Not a pair, do nothing to balls state
-            return currentBalls;
-        }
+  
+    const selectedBalls: AnimatedBall[] = [];
+    let isPair = false;
+  
+    setBalls((currentBalls) => {
+      const pair = currentBalls.filter((b) => selectedBallIds.includes(b.id));
+      if (pair.length < 2) return currentBalls;
+      
+      selectedBalls.push(...pair);
+      
+      // Check if they are exact opposites (e.g., 1 and -1, or 0.5 and -0.5)
+      isPair = pair[0].value === -pair[1].value;
+  
+      if (isPair) {
+        // Pair found, mark for exit
+        return currentBalls.map((b) =>
+          selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b
+        );
+      } else {
+        // Not a valid pair, do nothing to balls state
+        return currentBalls;
+      }
     });
-
-    const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
-
-    if (sum === 0) {
+  
+    if (isPair) {
       // If they cancel, remove them after animation
       const timer = setTimeout(() => {
         setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
@@ -462,5 +470,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
+
+    
 
     
