@@ -273,17 +273,10 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     const remainingBalls = balls.filter((b) => b.state !== 'exiting' && b.state !== 'pairing');
     const currentResult = remainingBalls.reduce((sum, b) => sum + b.value, 0);
     
-    const counts = remainingBalls.reduce((acc, ball) => {
-        if (ball.value === 1) acc.posFull++;
-        else if (ball.value === -1) acc.negFull++;
-        else if (ball.value === 0.5) acc.posHalf++;
-        else if (ball.value === -0.5) acc.negHalf++;
-        return acc;
-    }, { posFull: 0, negFull: 0, posHalf: 0, negHalf: 0 });
+    const hasPositive = remainingBalls.some(b => b.value > 0);
+    const hasNegative = remainingBalls.some(b => b.value < 0);
 
-    const hasUnpaired = counts.posFull !== counts.negFull || counts.posHalf !== counts.negHalf;
-    
-    if (hasUnpaired) {
+    if (hasPositive && hasNegative) {
       toast({
         variant: 'destructive',
         title: 'Still pairs to make!',
