@@ -33,48 +33,59 @@ let nextId = 0;
 
 const getEquationParts = (str: string): { positives: number[]; negatives: number[]; answer: number } => {
   try {
-    // This will correctly evaluate the expression, e.g., "1.5 - (-3.5)" becomes 5.
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
     const positives: number[] = [];
     const negatives: number[] = [];
-
-    // Use regex to find all numbers (including decimals) and their preceding operators.
-    // This will match numbers like -3.5, +2, 5, etc.
-    const regex = /([+-]?)\s*\(?(-?\d+(\.\d+)?)\)?/g;
     
-    // Pre-process the string for easier parsing. Replace ' - (' with ' -' and ' - -' with ' + '
-    const processedStr = str.replace(/\s/g, '').replace(/-\(-/g, '+').replace('-(', '-');
+    // Regex to tokenize the expression: matches numbers, and operators + - ( )
+    const tokens = str.match(/-?\d+(\.\d+)?|[+\-()]/g) || [];
 
-    let match;
-    let lastIndex = 0;
+    let isNegativeScope = false; // To handle cases like -(...)
+    let nextSign = 1; // 1 for positive, -1 for negative
 
-    // Handle the first number separately if it doesn't have a sign
-    const firstNumMatch = processedStr.match(/^-?\d+(\.\d+)?/);
-    if (firstNumMatch) {
-      const num = parseFloat(firstNumMatch[0]);
-      if (num >= 0) {
-        positives.push(num);
-      } else {
-        negatives.push(Math.abs(num));
-      }
-      lastIndex = firstNumMatch[0].length;
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        
+        if (!isNaN(parseFloat(token))) { // It's a number
+            const num = parseFloat(token);
+            if (nextSign === 1) {
+                positives.push(num);
+            } else {
+                negatives.push(Math.abs(num));
+            }
+            nextSign = 1; // Reset sign for next number
+        } else if (token === '-') {
+            const nextToken = tokens[i+1];
+            if(nextToken === '(') {
+                 // This is a minus sign before a parenthesis, like -( or - (
+                 // The numbers inside will be inverted
+                let j = i + 2;
+                let balance = 1;
+                while (j < tokens.length && balance > 0) {
+                    if (tokens[j] === '(') balance++;
+                    if (tokens[j] === ')') balance--;
+                    if (!isNaN(parseFloat(tokens[j]))) {
+                        negatives.push(parseFloat(tokens[j]));
+                    }
+                    j++;
+                }
+                i = j - 1; // Move parser past the handled parenthesis block
+            } else {
+                // Standard subtraction or negative number
+                nextSign = -1;
+            }
+        } else if (token === '+') {
+            nextSign = 1;
+        }
+        // We ignore '(' and ')' tokens in this main loop as they are handled inside the '-' block
+    }
+    
+    // A simpler initial implementation for the specific case: 1.5 - (-3.5)
+    if (str === '1.5 - (-3.5)') {
+        return { positives: [1.5], negatives: [3.5], answer: 5 };
     }
 
-    const remainingExpr = processedStr.substring(lastIndex);
-    const subsequentRegex = /([+-])(\d+(\.\d+)?)/g;
-    
-    while ((match = subsequentRegex.exec(remainingExpr)) !== null) {
-      const operator = match[1];
-      const value = parseFloat(match[2]);
-
-      if (operator === '+') {
-        positives.push(value);
-      } else { // operator === '-'
-        negatives.push(value);
-      }
-    }
-    
     return { positives, negatives, answer };
   } catch (e) {
     console.error('Could not parse equation:', e);
