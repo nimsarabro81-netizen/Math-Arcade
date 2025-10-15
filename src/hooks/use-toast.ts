@@ -1,3 +1,4 @@
+
 "use client"
 
 // Inspired by react-hot-toast library
@@ -159,7 +160,11 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
-        if (!open) dismiss()
+        if (!open) {
+            // Unset the open property to avoid re-triggering the toast.
+            update({ ...props, id, open: false });
+            dismiss();
+        }
       },
     },
   })
