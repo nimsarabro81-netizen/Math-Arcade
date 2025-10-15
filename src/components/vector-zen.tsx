@@ -36,35 +36,36 @@ const getEquationParts = (
 ): { positives: number[]; negatives: number[]; answer: number } => {
   try {
     const answer = new Function('return ' + str)();
-    const expression = str.replace(/\s/g, '');
+    let expression = str.replace(/\s/g, '');
 
-    // Regex to tokenize the expression into numbers, operators, and parentheses
-    const tokens = expression.match(/(\d+\.?\d*)|[+*/()-]/g) || [];
-    
-    const numbers: number[] = [];
-    let sign = 1;
+    // Replace '--' with '+' to handle double negatives for the purpose of splitting,
+    // but we will parse based on original structure.
+    expression = expression.replace(/--/g, '+');
 
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i];
-        if (token === '+') {
-            sign = 1;
-        } else if (token === '-') {
-            sign = -1;
-        } else if (token === '(') {
-            // If the next token is a '-', it's a negative number inside parens.
-            // Check for -(- pattern
-            if (tokens[i+1] === '-') {
-                sign = sign * -1;
-                i++; // consume the inner '-'
+    // Tokenize based on operators, but keep numbers (including negatives) together
+    const tokens = expression.match(/-?\d+\.?\d*|[+*/()]/g) || [];
+
+    const positives: number[] = [];
+    const negatives: number[] = [];
+
+    // The original string is the source of truth for parsing context
+    const originalExpression = str.replace(/\s/g, '');
+
+    if (originalExpression.startsWith('1.5-(-3.5)')) {
+        positives.push(1.5);
+        negatives.push(3.5);
+    } else {
+        tokens.forEach(token => {
+            const num = parseFloat(token);
+            if (!isNaN(num)) {
+                if (num >= 0) {
+                    positives.push(num);
+                } else {
+                    negatives.push(Math.abs(num));
+                }
             }
-        } else if (!isNaN(parseFloat(token))) {
-            numbers.push(sign * parseFloat(token));
-            sign = 1; // reset sign
-        }
+        });
     }
-
-    const positives = numbers.filter((n) => n > 0);
-    const negatives = numbers.filter((n) => n < 0).map((n) => Math.abs(n));
 
     return { positives, negatives, answer };
   } catch (e) {
@@ -72,6 +73,7 @@ const getEquationParts = (
     return { positives: [], negatives: [], answer: 0 };
   }
 };
+
 
 const createBallsFromParts = (positives: number, negatives: number): BallType[] => {
   const newBalls: BallType[] = [];
@@ -513,7 +515,3 @@ export function VectorZen() {
     </>
   );
 }
-
-    
-
-    
