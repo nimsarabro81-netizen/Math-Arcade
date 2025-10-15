@@ -191,11 +191,9 @@ export function MultiplicationZen() {
             <div className="flex gap-4">
                 <Button variant="outline" className="h-24 w-24 flex-col text-2xl" onClick={() => handleChooseGroup(originalEquation.originalFactor1)}>
                     {originalEquation.originalFactor1}
-                    <span className="text-xs font-light mt-1">groups of {originalEquation.originalFactor2}</span>
                 </Button>
                 <Button variant="outline" className="h-24 w-24 flex-col text-2xl" onClick={() => handleChooseGroup(originalEquation.originalFactor2)}>
                     {originalEquation.originalFactor2}
-                    <span className="text-xs font-light mt-1">groups of {originalEquation.originalFactor1}</span>
                 </Button>
             </div>
         </CardContent>
