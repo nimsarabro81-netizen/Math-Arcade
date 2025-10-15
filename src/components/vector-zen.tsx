@@ -36,46 +36,38 @@ const levels = [
 
 let nextId = 0;
 
-const getEquationParts = (str: string): { positives: number, negatives: number, answer: number } => {
+const getEquationParts = (str: string): { positives: number[], negatives: number[], answer: number } => {
     try {
-        // Use a safe method to evaluate the mathematical expression
         const answer = new Function('return ' + str)();
 
-        // This part is tricky with decimals, as the game is based on integer balls.
-        // We will round for the purpose of ball creation.
-        const firstTermMatch = str.match(/^(-?\d+(\.\d+)?)/);
-        const firstTerm = firstTermMatch ? parseFloat(firstTermMatch[0]) : 0;
+        // This regex will find all numbers, respecting negative signs and double negatives.
+        // It's a bit complex, but it handles cases like "5 - 8", "1.5 - (-3.5)", and "2 + 2"
+        const matches = str.replace(/\s/g, '').match(/-?\d+(\.\d+)?|\d+(\.\d+)?/g);
         
-        const otherTerms = str.substring(firstTermMatch ? firstTermMatch[0].length : 0);
-        const otherTermMatches = otherTerms.match(/[+-]\s*(-?\d+(\.\d+)?)/g) || [];
-
-        let allNumbers: number[] = [firstTerm];
-        otherTermMatches.forEach(term => {
-            const cleanedTerm = term.replace(/\s/g, '');
-            // Handle double negatives like --3.5 or -(-3.5)
-            if (cleanedTerm.startsWith('--') || cleanedTerm.startsWith('-(')) {
-                allNumbers.push(parseFloat(cleanedTerm.replace(/--|\(|\)/g, '')));
-            } else {
-                 allNumbers.push(parseFloat(cleanedTerm));
-            }
-        });
+        const expression = str.replace(/\s/g, '').replace(/--/g, '+');
         
-        let positives = 0;
-        let negatives = 0;
+        let terms = expression.split(/(?=[+-])/).filter(Boolean);
+        if (!['+','-'].includes(expression[0])) {
+          terms = expression.split(/(?=[+-])/);
+          if (expression.includes('+') || expression.includes('-')) {
+             const firstOpIndex = Math.min(expression.indexOf('+') > -1 ? expression.indexOf('+') : Infinity, expression.indexOf('-') > -1 ? expression.indexOf('-') : Infinity);
+             if (firstOpIndex > 0) {
+                terms.unshift(expression.substring(0, firstOpIndex));
+             }
+          } else {
+            terms = [expression];
+          }
+        }
+        
+        const numbers = terms.map(term => parseFloat(term));
+        
+        const positives = numbers.filter(n => n > 0);
+        const negatives = numbers.filter(n => n < 0).map(n => Math.abs(n));
 
-        allNumbers.forEach(num => {
-            if (num > 0) {
-                positives += num;
-            } else {
-                negatives += Math.abs(num);
-            }
-        });
-
-        // Since the game uses integer balls, we round the totals.
-        return { positives: Math.round(positives), negatives: Math.round(negatives), answer: answer };
+        return { positives, negatives, answer };
     } catch (e) {
         console.error("Could not parse equation:", e);
-        return { positives: 0, negatives: 0, answer: 0 };
+        return { positives: [], negatives: [], answer: 0 };
     }
 }
 
@@ -96,7 +88,7 @@ export function VectorZen() {
   const [levelStage, setLevelStage] = useState<LevelStage>('prediction');
   
   // Prediction state
-  const [correctBallCounts, setCorrectBallCounts] = useState({ positives: 0, negatives: 0 });
+  const [correctBallCounts, setCorrectBallCounts] = useState({ positives: [] as number[], negatives: [] as number[] });
   const [prediction, setPrediction] = useState({ positives: "", negatives: "" });
   const [predictionAttempts, setPredictionAttempts] = useState(0);
 
@@ -153,21 +145,24 @@ export function VectorZen() {
 
   const handlePredictionSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const posGuess = parseInt(prediction.positives);
-    const negGuess = parseInt(prediction.negatives);
+    const posGuess = prediction.positives.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+    const negGuess = prediction.negatives.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
 
-    if (isNaN(posGuess) || isNaN(negGuess)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Input",
-        description: "Please enter a number for both fields.",
-      });
-      return;
-    }
+    const sortedPosGuess = [...posGuess].sort();
+    const sortedNegGuess = [...negGuess].sort();
+    const sortedPosCorrect = [...correctBallCounts.positives].sort();
+    const sortedNegCorrect = [...correctBallCounts.negatives].sort();
+
+    const isCorrect = 
+        sortedPosGuess.length === sortedPosCorrect.length &&
+        sortedPosGuess.every((val, index) => val === sortedPosCorrect[index]) &&
+        sortedNegGuess.length === sortedNegCorrect.length &&
+        sortedNegGuess.every((val, index) => val === sortedNegCorrect[index]);
+
 
     setPredictionAttempts(prev => prev + 1);
 
-    if (posGuess === correctBallCounts.positives && negGuess === correctBallCounts.negatives) {
+    if (isCorrect) {
       let bonus = 0;
       if (predictionAttempts === 0) {
         bonus = 15;
@@ -183,7 +178,9 @@ export function VectorZen() {
         });
       }
       
-      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives);
+      const totalPositives = Math.round(correctBallCounts.positives.reduce((sum, n) => sum + n, 0));
+      const totalNegatives = Math.round(correctBallCounts.negatives.reduce((sum, n) => sum + n, 0));
+      const newBalls = createBallsFromParts(totalPositives, totalNegatives);
       setBalls(newBalls.map(b => ({ ...b, state: 'entering' })));
       setLevelStage('pairing');
     } else {
@@ -191,7 +188,7 @@ export function VectorZen() {
       toast({
         variant: "destructive",
         title: "Not quite!",
-        description: "The number of balls doesn't match the equation. Try again.",
+        description: "The numbers don't match the equation. Try again.",
       });
     }
   }
@@ -243,7 +240,7 @@ export function VectorZen() {
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex(prev => prev - 1);
+      setCurrentLevelIndex(prev => prev + 1);
     }
   };
 
@@ -279,7 +276,7 @@ export function VectorZen() {
 
     if (parseInt(userAnswer) === currentResult && parseInt(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
-      const newScore = score + 25;
+      let newScore = score + 25;
       
       toast({
         title: "Correct!",
@@ -405,28 +402,28 @@ export function VectorZen() {
                     <Card className="w-full max-w-md">
                       <CardHeader>
                           <h3 className="text-2xl font-headline font-bold text-center">Prediction Time!</h3>
-                          <p className="text-muted-foreground text-center">How many balls of each color make up this equation?</p>
+                          <p className="text-muted-foreground text-center">What numbers make up this equation? (separate with commas if multiple)</p>
                       </CardHeader>
                       <CardContent>
                           <form onSubmit={handlePredictionSubmit} className="space-y-4">
                               <div className="flex items-center gap-4">
-                                  <Label htmlFor="positives" className="w-24 text-red-500 font-bold">Red Balls</Label>
+                                  <Label htmlFor="positives" className="w-24 text-red-500 font-bold">Positive #s</Label>
                                   <Input 
                                       id="positives"
-                                      type="number"
+                                      type="text"
                                       value={prediction.positives}
                                       onChange={(e) => setPrediction(p => ({...p, positives: e.target.value}))}
-                                      placeholder="Count"
+                                      placeholder="e.g. 5, 2.5"
                                   />
                               </div>
                                <div className="flex items-center gap-4">
-                                  <Label htmlFor="negatives" className="w-24 text-blue-500 font-bold">Blue Squares</Label>
+                                  <Label htmlFor="negatives" className="w-24 text-blue-500 font-bold">Negative #s</Label>
                                   <Input 
                                       id="negatives"
-                                      type="number"
+                                      type="text"
                                       value={prediction.negatives}
                                       onChange={(e) => setPrediction(p => ({...p, negatives: e.target.value}))}
-                                      placeholder="Count"
+                                      placeholder="e.g. 3, 1"
                                   />
                               </div>
                               <Button type="submit" className="w-full">
