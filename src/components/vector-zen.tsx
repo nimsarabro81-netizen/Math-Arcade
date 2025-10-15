@@ -17,7 +17,7 @@ type BallType = {
 };
 
 type AnimatedBall = BallType & {
-  state: 'entering' | 'idle' | 'exiting';
+  state: 'entering' | 'idle' | 'exiting' | 'pairing';
 };
 
 type LevelStage = 'prediction' | 'pairing';
@@ -222,38 +222,30 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
   
-    const selectedBalls: AnimatedBall[] = [];
     let isPair = false;
   
     setBalls((currentBalls) => {
       const pair = currentBalls.filter((b) => selectedBallIds.includes(b.id));
       if (pair.length < 2) return currentBalls;
       
-      selectedBalls.push(...pair);
-      
-      // Check if they are exact opposites (e.g., 1 and -1, or 0.5 and -0.5)
       isPair = pair[0].value === -pair[1].value;
   
       if (isPair) {
-        // Pair found, mark for exit
         return currentBalls.map((b) =>
-          selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b
+          selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
         );
       } else {
-        // Not a valid pair, do nothing to balls state
         return currentBalls;
       }
     });
   
     if (isPair) {
-      // If they cancel, remove them after animation
       const timer = setTimeout(() => {
         setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
         setSelectedBallIds([]);
-      }, 500);
+      }, 500); // Duration of the pairing animation
       return () => clearTimeout(timer);
     } else {
-      // If they don't cancel, just deselect them
       const timer = setTimeout(() => {
         setSelectedBallIds([]);
       }, 200);
@@ -470,7 +462,3 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
-
-    
-
-    

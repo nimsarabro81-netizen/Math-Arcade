@@ -24,6 +24,7 @@ const ballVariants = cva(
         entering: "animate-ball-in",
         idle: "",
         exiting: "animate-ball-out",
+        pairing: "animate-fade-out-zero"
       }
     },
     compoundVariants: [

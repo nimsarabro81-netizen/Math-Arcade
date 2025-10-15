@@ -114,6 +114,10 @@ export default {
             animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
           },
         },
+        'fade-out-zero': {
+          '0%': { opacity: '1', transform: 'scale(1)' },
+          '100%': { opacity: '0', transform: 'scale(0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -123,6 +127,7 @@ export default {
         'pop': 'pop 0.3s ease-out',
         'fade-in': 'fade-in 0.5s ease-in-out',
         'bounce': 'bounce 1s infinite',
+        'fade-out-zero': 'fade-out-zero 0.5s ease-in-out forwards',
       },
        backgroundImage: {
         'grid': 'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)',
