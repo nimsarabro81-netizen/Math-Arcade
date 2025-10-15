@@ -30,6 +30,7 @@ export default function Home() {
 
   const [additionComplete, setAdditionComplete] = useState(false);
   const [multiplicationComplete, setMultiplicationComplete] = useState(false);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
 
   const allGamesComplete = additionComplete && multiplicationComplete;
 
@@ -47,16 +48,16 @@ export default function Home() {
     setScore(newScore);
   };
   
-  const saveScore = useCallback(async (finalScore: number) => {
+  const saveScore = useCallback((finalScoreValue: number) => {
     if (user && firestore) {
       const rankData = {
         userId: user.uid,
         username: username || 'Anonymous',
-        score: finalScore,
+        score: finalScoreValue,
         lastUpdated: new Date().toISOString(),
       };
       const ranksCollection = collection(firestore, 'userRanks');
-      await addDocumentNonBlocking(ranksCollection, rankData);
+      addDocumentNonBlocking(ranksCollection, rankData);
     }
   }, [user, firestore, username]);
 
@@ -81,23 +82,30 @@ export default function Home() {
   
   useEffect(() => {
       if (allGamesComplete) {
-        setScore(currentScore => {
-          let finalScore = currentScore;
-           if (startTime) {
-              const endTime = Date.now();
-              const durationInSeconds = (endTime - startTime) / 1000;
-              const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
-              finalScore += timeBonus;
-              toast({
-                title: `Time Bonus: +${timeBonus}`,
-                description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
-              });
-            }
-            saveScore(finalScore);
-            return finalScore;
-        });
+        let finalScoreValue = score;
+         if (startTime) {
+            const endTime = Date.now();
+            const durationInSeconds = (endTime - startTime) / 1000;
+            const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
+            finalScoreValue += timeBonus;
+          }
+          setFinalScore(finalScoreValue);
+          saveScore(finalScoreValue);
       }
-  }, [allGamesComplete, startTime, saveScore, toast]);
+  }, [allGamesComplete, score, startTime, saveScore]);
+
+  useEffect(() => {
+    if (finalScore !== null && startTime) {
+        const endTime = Date.now();
+        const durationInSeconds = (endTime - startTime) / 1000;
+        const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
+        toast({
+            title: `Time Bonus: +${timeBonus}`,
+            description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
+        });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalScore, toast]);
   
   const startOver = () => {
     setIsGameStarted(false);
@@ -106,6 +114,7 @@ export default function Home() {
     setStartTime(null);
     setAdditionComplete(false);
     setMultiplicationComplete(false);
+    setFinalScore(null);
   }
 
   return (
@@ -153,7 +162,7 @@ export default function Home() {
                 <div className="absolute inset-0 bg-background/90 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm z-20 rounded-lg">
                   <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
                   <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
-                  <p className="text-muted-foreground mt-2">Final Score: {score}</p>
+                  <p className="text-muted-foreground mt-2">Final Score: {finalScore ?? score}</p>
                   <Button onClick={startOver} className="mt-6">
                     Play Again
                   </Button>
@@ -189,7 +198,7 @@ export default function Home() {
                     <CardTitle className="text-center">Score</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center">
-                    <p className="font-mono text-5xl font-bold">{score}</p>
+                    <p className="font-mono text-5xl font-bold">{finalScore ?? score}</p>
                 </CardContent>
              </Card>
             <div className="mt-8">
