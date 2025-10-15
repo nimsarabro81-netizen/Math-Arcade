@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Ball } from '@/components/ball';
 import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Repeat, Copy, Layers } from 'lucide-react';
@@ -145,7 +145,7 @@ export function MultiplicationZen() {
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex(prev => prev - 1);
+      setCurrentLevelIndex(prev => prev + 1);
     }
   };
   
