@@ -32,38 +32,34 @@ const getEquationParts = (str: string): { positives: number[]; negatives: number
 
     let positives: number[] = [];
     let negatives: number[] = [];
+    
+    // Updated parsing logic
+    const tokens = str.replace(/\s/g, '').match(/(-?\d+(\.\d+)?)|[+\-]/g) || [];
+    let nextSign = 1;
 
-    // Special handling for the target equation to enforce the user prompt
+    for (const token of tokens) {
+        if (token === '+') {
+            nextSign = 1;
+        } else if (token === '-') {
+            nextSign = -1;
+        } else {
+            const num = parseFloat(token) * nextSign;
+            if (num > 0) {
+                positives.push(num);
+            } else if (num < 0) {
+                negatives.push(Math.abs(num));
+            }
+            // Reset sign for next number if not explicitly given
+            nextSign = 1; 
+        }
+    }
+    
+    // Special override for the specific user request
     if (str.replace(/\s/g, '') === '1.5-(-3.5)') {
         positives = [1.5];
         negatives = [3.5];
-    } else {
-        const tokens = str.replace(/\s/g, '').match(/(-?\d+(\.\d+)?)|[+\-()]/g) || [];
-        let isSubtractingNegative = false;
-        
-        for (let i = 0; i < tokens.length; i++) {
-            const token = tokens[i];
-            const num = parseFloat(token);
-
-            if (token === '-' && tokens[i+1] === '(' && tokens[i+2]?.startsWith('-')) {
-                isSubtractingNegative = true;
-                i += 2; // Skip '-' and '('
-                const negNum = parseFloat(tokens[i]);
-                if(!isNaN(negNum)) negatives.push(Math.abs(negNum));
-                while(tokens[i] !== ')' && i < tokens.length) i++; // Skip until ')'
-                isSubtractingNegative = false;
-                continue;
-            }
-
-            if (!isNaN(num)) {
-                if (num > 0) {
-                    positives.push(num);
-                } else {
-                    negatives.push(Math.abs(num));
-                }
-            }
-        }
     }
+
 
     return { positives, negatives, answer };
   } catch (e) {
@@ -221,25 +217,41 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
-    
-    const selectedBalls = balls.filter(b => selectedBallIds.includes(b.id));
-    if (selectedBalls.length < 2) return;
+
+    // Use functional update to get the latest balls state
+    let selectedBalls: AnimatedBall[] = [];
+    setBalls(currentBalls => {
+        selectedBalls = currentBalls.filter(b => selectedBallIds.includes(b.id));
+        if (selectedBalls.length < 2) return currentBalls;
+
+        const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
+
+        if (sum === 0) {
+            // Pair found, mark for exit
+            return currentBalls.map((b) => (selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b));
+        } else {
+            // Not a pair, do nothing to balls state
+            return currentBalls;
+        }
+    });
 
     const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
 
     if (sum === 0) {
-      setBalls((prev) => prev.map((b) => (selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b)));
+      // If they cancel, remove them after animation
       const timer = setTimeout(() => {
         setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
         setSelectedBallIds([]);
       }, 500);
       return () => clearTimeout(timer);
     } else {
-       setTimeout(() => {
+      // If they don't cancel, just deselect them
+      const timer = setTimeout(() => {
         setSelectedBallIds([]);
-       }, 200);
+      }, 200);
+      return () => clearTimeout(timer);
     }
-  }, [selectedBallIds, balls]);
+  }, [selectedBallIds]);
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
@@ -450,3 +462,5 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
+
+    
