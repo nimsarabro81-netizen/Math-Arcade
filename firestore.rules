@@ -1,63 +1,21 @@
-/**
- * @fileoverview Firestore Security Rules for VectorZen.
- *
- * Core Philosophy: This ruleset prioritizes security and data integrity while allowing rapid prototyping.
- *  It is designed to prevent unauthorized data access and modification while remaining flexible on data shapes.
- *
- * Data Structure: The primary collection is `/userRanks`, which stores user ranking data.
- *
- * Key Security Decisions:
- *  - Public Read Access: The `/userRanks` collection is publicly readable. This allows for displaying leaderboards.
- *  - Owner-Only Writes: Only the owner (a user with a matching `userId`) can create, update, or delete their own rank data.
- *
- * Denormalization for Authorization: The `UserRank` documents are required to have a `userId` field that matches the authenticated user's `uid`.
- *  This avoids the need for costly and complex `get()` operations in the rules.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Manages access control for the `/userRanks` collection.
-     * @path /userRanks
-     * @allow (get, list): Anyone can read the leaderboard.
-     * @allow (create): A user can create their own rank if the `userId` matches their `uid`.
-     * @allow (update, delete): A user can update/delete their rank if the `userId` matches their `uid` and the document exists.
-     * @deny (create, update, delete): If the `userId` does not match the `uid`, or the record does not exist.
-     * @principle Public read, owner-only write access for user ranking data.
-     */
+    // By default, deny all reads and writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Allow public read access to the user ranks for the leaderboard
     match /userRanks/{userRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isExistingOwner(resource.data.userId);
-    }
-
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {bool} True if the user is authenticated, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the requesting user is the owner of the resource (based on userId).
-     * @param {string} userId - The userId to compare against the request's auth UID.
-     * @return {bool} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the requesting user is the owner of the resource and that the resource exists.
-     * @param {string} userId - The userId to compare against the request's auth UID.
-     * @return {bool} True if the user is the existing owner, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+      allow read: if true;
+      // Allow users to create their own rank entry, but not edit others'
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Users should not be able to update or delete ranks directly
+      allow update, delete: if false;
     }
   }
 }
