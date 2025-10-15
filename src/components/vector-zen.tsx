@@ -28,7 +28,7 @@ type AnimatedBall = BallType & {
 type LevelStage = 'prediction' | 'pairing';
 
 const levels = [
-  "3 - 1",
+  "1.5 - (-3.5)",
   "2 + 2",
   "4 - 4",
   "5 - 8",
@@ -486,5 +486,3 @@ export function VectorZen() {
     </>
   );
 }
-
-    
