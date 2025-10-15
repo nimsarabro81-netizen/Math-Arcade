@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Ball } from "@/components/ball";
-import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Plus, Minus } from "lucide-react";
+import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Plus, Minus, HelpCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -16,14 +16,16 @@ import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection } from "firebase/firestore";
 import { Label } from "./ui/label";
 
-type Ball = {
+type BallType = {
   id: number;
   value: 1 | -1;
 };
 
-type AnimatedBall = Ball & {
+type AnimatedBall = BallType & {
   state: 'entering' | 'idle' | 'exiting';
 };
+
+type LevelStage = 'prediction' | 'pairing';
 
 const levels = [
   "3 - 1",
@@ -34,34 +36,63 @@ const levels = [
 
 let nextId = 0;
 
-const createBallsFromEquation = (str: string): { balls: Ball[], answer: number } => {
-  const matches = str.trim().match(/[+-]?\s*\d+/g);
-  if (!matches) return { balls: [], answer: 0 };
+const getEquationParts = (str: string): { positives: number, negatives: number, answer: number } => {
+    const matches = str.trim().match(/[+-]?\s*\d+/g);
+    if (!matches) return { positives: 0, negatives: 0, answer: 0 };
 
-  const newBalls: Ball[] = [];
-  let answer = 0;
-  matches.forEach(match => {
-    const num = parseInt(match.replace(/\s/g, ''));
-    if (isNaN(num)) return;
-    answer += num;
-    for (let i = 0; i < Math.abs(num); i++) {
-      newBalls.push({ id: nextId++, value: num > 0 ? 1 : -1 });
+    let positives = 0;
+    let negatives = 0;
+    let answer = 0;
+
+    matches.forEach(match => {
+        const num = parseInt(match.replace(/\s/g, ''));
+        if (isNaN(num)) return;
+        
+        answer += num;
+        if (num > 0) {
+            positives += num;
+        } else {
+            negatives += Math.abs(num);
+        }
+    });
+    return { positives, negatives, answer };
+}
+
+const createBallsFromParts = (positives: number, negatives: number): BallType[] => {
+    const newBalls: BallType[] = [];
+    for (let i = 0; i < positives; i++) {
+        newBalls.push({ id: nextId++, value: 1 });
     }
-  });
-  return { balls: newBalls, answer };
+    for (let i = 0; i < negatives; i++) {
+        newBalls.push({ id: nextId++, value: -1 });
+    }
+    return newBalls;
 };
 
 export function VectorZen() {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+  const [levelStage, setLevelStage] = useState<LevelStage>('prediction');
+  
+  // Prediction state
+  const [correctBallCounts, setCorrectBallCounts] = useState({ positives: 0, negatives: 0 });
+  const [prediction, setPrediction] = useState({ positives: "", negatives: "" });
+  const [predictionAttempts, setPredictionAttempts] = useState(0);
+
+  // Pairing state
   const [balls, setBalls] = useState<AnimatedBall[]>([]);
   const [selectedBallIds, setSelectedBallIds] = useState<number[]>([]);
+  
+  // General level state
   const [correctAnswer, setCorrectAnswer] = useState(0);
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState("");
   const [score, setScore] = useState(100);
+  
   const { toast } = useToast();
   const { firestore, user } = useFirebase();
   const auth = useAuth();
+  
+  // Game flow state
   const [username, setUsername] = useState("");
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -74,9 +105,16 @@ export function VectorZen() {
 
   const setupLevel = useCallback((levelIndex: number) => {
     const equation = levels[levelIndex];
-    const { balls: newBalls, answer } = createBallsFromEquation(equation);
-    setBalls(newBalls.map(b => ({ ...b, state: 'entering' })));
+    const { positives, negatives, answer } = getEquationParts(equation);
+    
+    setCorrectBallCounts({ positives, negatives });
     setCorrectAnswer(answer);
+    
+    setLevelStage('prediction');
+    setPrediction({ positives: "", negatives: "" });
+    setPredictionAttempts(0);
+    
+    setBalls([]);
     setSelectedBallIds([]);
     setIsLevelSolved(false);
     setUserAnswer("");
@@ -90,6 +128,51 @@ export function VectorZen() {
       setupLevel(currentLevelIndex);
     }
   }, [currentLevelIndex, setupLevel, isGameStarted]);
+
+  const handlePredictionSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const posGuess = parseInt(prediction.positives);
+    const negGuess = parseInt(prediction.negatives);
+
+    if (isNaN(posGuess) || isNaN(negGuess)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a number for both fields.",
+      });
+      return;
+    }
+
+    setPredictionAttempts(prev => prev + 1);
+
+    if (posGuess === correctBallCounts.positives && negGuess === correctBallCounts.negatives) {
+      let bonus = 0;
+      if (predictionAttempts === 0) {
+        bonus = 15;
+        setScore(prev => prev + bonus);
+        toast({
+          title: "Perfect Prediction!",
+          description: `+${bonus} bonus points!`,
+        });
+      } else {
+         toast({
+          title: "Correct!",
+          description: "You figured it out!",
+        });
+      }
+      
+      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives);
+      setBalls(newBalls.map(b => ({ ...b, state: 'entering' })));
+      setLevelStage('pairing');
+    } else {
+      setScore(prev => Math.max(0, prev - 5));
+      toast({
+        variant: "destructive",
+        title: "Not quite!",
+        description: "The number of balls doesn't match the equation. Try again.",
+      });
+    }
+  }
 
   const handleBallClick = (clickedBallId: number) => {
     const ball = balls.find(b => b.id === clickedBallId);
@@ -155,7 +238,7 @@ export function VectorZen() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmitAnswer = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLevelSolved) return;
 
@@ -172,7 +255,7 @@ export function VectorZen() {
         return;
     }
 
-    if (parseInt(userAnswer) === currentResult) {
+    if (parseInt(userAnswer) === currentResult && parseInt(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
       const newScore = score + 25;
       
@@ -186,7 +269,6 @@ export function VectorZen() {
         if (startTime) {
           const endTime = Date.now();
           const durationInSeconds = (endTime - startTime) / 1000;
-          // Time bonus: max 100 points, lose 1 point per second. Minimum 0 bonus.
           const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
           finalScore += timeBonus;
           toast({
@@ -223,7 +305,7 @@ export function VectorZen() {
   };
 
   const handleAddBall = (value: 1 | -1) => {
-    if (isLevelSolved) return;
+    if (isLevelSolved || levelStage !== 'pairing') return;
     const newBall: AnimatedBall = {
       id: nextId++,
       value,
@@ -302,7 +384,7 @@ export function VectorZen() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-             <div className="p-4 bg-muted/20 border-b flex items-center justify-center gap-4">
+             <div className={cn("p-4 bg-muted/20 border-b flex items-center justify-center gap-4", levelStage !== 'pairing' && "hidden")}>
                 <Button onClick={() => handleAddBall(1)} variant="outline" disabled={isLevelSolved}>
                     <Plus className="mr-2 h-4 w-4" /> Add Positive
                 </Button>
@@ -314,6 +396,43 @@ export function VectorZen() {
               "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
               isLevelSolved && "bg-green-500/10"
             )}>
+              {levelStage === 'prediction' && (
+                <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm z-10">
+                    <Card className="w-full max-w-md">
+                      <CardHeader>
+                          <h3 className="text-2xl font-headline font-bold text-center">Prediction Time!</h3>
+                          <p className="text-muted-foreground text-center">How many balls of each color make up this equation?</p>
+                      </CardHeader>
+                      <CardContent>
+                          <form onSubmit={handlePredictionSubmit} className="space-y-4">
+                              <div className="flex items-center gap-4">
+                                  <Label htmlFor="positives" className="w-24 text-red-500 font-bold">Red Balls</Label>
+                                  <Input 
+                                      id="positives"
+                                      type="number"
+                                      value={prediction.positives}
+                                      onChange={(e) => setPrediction(p => ({...p, positives: e.target.value}))}
+                                      placeholder="e.g., 3"
+                                  />
+                              </div>
+                               <div className="flex items-center gap-4">
+                                  <Label htmlFor="negatives" className="w-24 text-blue-500 font-bold">Blue Squares</Label>
+                                  <Input 
+                                      id="negatives"
+                                      type="number"
+                                      value={prediction.negatives}
+                                      onChange={(e) => setPrediction(p => ({...p, negatives: e.target.value}))}
+                                      placeholder="e.g., 1"
+                                  />
+                              </div>
+                              <Button type="submit" className="w-full">
+                                <CheckCircle2 className="mr-2 h-4 w-4" /> Check Answer
+                              </Button>
+                          </form>
+                      </CardContent>
+                    </Card>
+                </div>
+              )}
               {balls.map(ball => (
                 <Ball
                   key={ball.id}
@@ -326,12 +445,10 @@ export function VectorZen() {
               ))}
               {allLevelsComplete && (
                 <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
-                    <>
                       <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
                       <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
                       <p className="text-muted-foreground mt-2">Final Score: {score}</p>
                       <Button onClick={startOver} className="mt-6">Play Again</Button>
-                    </>
                 </div>
               )}
                {isLevelSolved && !allLevelsComplete && (
@@ -345,9 +462,9 @@ export function VectorZen() {
                )}
             </div>
           </CardContent>
-          {!allLevelsComplete && (
+          {!allLevelsComplete && (levelStage === 'pairing') && (
             <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
-              <form onSubmit={handleSubmit} className="flex w-full max-w-sm items-center space-x-2">
+              <form onSubmit={handleSubmitAnswer} className="flex w-full max-w-sm items-center space-x-2">
                   <Input 
                       type="number" 
                       placeholder="Your Answer" 
