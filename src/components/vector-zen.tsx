@@ -203,6 +203,34 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
         : [...prevIds, clickedBallId]
     );
   };
+  
+    // This useEffect handles the pairing logic
+    useEffect(() => {
+        if (selectedBallIds.length !== 2) return;
+
+        const pair = balls.filter(b => selectedBallIds.includes(b.id) && b.state !== 'pairing' && b.state !== 'exiting');
+        
+        if (pair.length === 2 && pair[0].value === -pair[1].value) {
+            setBalls(currentBalls => currentBalls.map(b => 
+                selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
+            ));
+        
+            const timer = setTimeout(() => {
+                setBalls(prev => prev.filter(b => !selectedBallIds.includes(b.id)));
+                setSelectedBallIds([]);
+            }, 500);
+            
+            return () => clearTimeout(timer);
+        } else {
+            // If they don't form a pair, just deselect them
+            const timer = setTimeout(() => {
+                setSelectedBallIds([]);
+            }, 200); // A brief delay to show the user the selection failed
+            return () => clearTimeout(timer);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedBallIds]);
+
 
   const handleFlip = () => {
     if (selectedBallIds.length === 0) {
@@ -223,35 +251,15 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     setSelectedBallIds([]);
   }
 
-  useEffect(() => {
-    if (selectedBallIds.length !== 2) return;
-
-    const pair = balls.filter(b => selectedBallIds.includes(b.id) && b.state !== 'pairing' && b.state !== 'exiting');
-    
-    if (pair.length === 2 && pair[0].value === -pair[1].value) {
-      setBalls(currentBalls => currentBalls.map(b => 
-        selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
-      ));
-
-      const timer = setTimeout(() => {
-        setBalls(prev => prev.filter(b => !selectedBallIds.includes(b.id)));
-        setSelectedBallIds([]);
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    } else {
-        const timer = setTimeout(() => {
-          setSelectedBallIds([]);
-        }, 200);
-        return () => clearTimeout(timer);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBallIds]);
-
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
-    onScoreChange(Math.max(0, score - 10)); // Penalize for resetting
+    onScoreChange(Math.max(0, score - 5)); 
+    toast({
+        variant: 'destructive',
+        title: 'Reset Penalty',
+        description: 'You lost 5 points for resetting the level.',
+    });
   };
 
   const goToNextLevel = () => {
@@ -269,14 +277,16 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
   const handleSubmitAnswer = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLevelSolved) return;
-
+  
     const remainingBalls = balls.filter((b) => b.state !== 'exiting' && b.state !== 'pairing');
     const currentResult = remainingBalls.reduce((sum, b) => sum + b.value, 0);
-    
+  
+    // New, more robust check for unpaired items
     const hasPositive = remainingBalls.some(b => b.value > 0);
     const hasNegative = remainingBalls.some(b => b.value < 0);
-
-    if (hasPositive && hasNegative) {
+    const hasUnpaired = hasPositive && hasNegative;
+  
+    if (hasUnpaired) {
       toast({
         variant: 'destructive',
         title: 'Still pairs to make!',
@@ -285,12 +295,11 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       onScoreChange(Math.max(0, score - 5));
       return;
     }
-
-
+  
     if (parseFloat(userAnswer) === currentResult && parseFloat(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
       onScoreChange(score + 25);
-
+  
       toast({
         title: 'Correct!',
         description: 'You solved the level!',
@@ -299,7 +308,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       if (currentLevelIndex === levels.length - 1) {
         onGameComplete();
       }
-
+  
     } else {
       onScoreChange(Math.max(0, score - 10));
       toast({
@@ -462,3 +471,5 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
+
+    

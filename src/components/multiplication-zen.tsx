@@ -162,7 +162,12 @@ export function MultiplicationZen({ isGameStarted, score, onScoreChange, onGameC
   
   const resetLevel = () => {
       setupLevel(currentLevelIndex);
-      onScoreChange(Math.max(0, score - 10));
+      onScoreChange(Math.max(0, score - 5));
+      toast({
+          variant: 'destructive',
+          title: 'Reset Penalty',
+          description: 'You lost 5 points for resetting the level.',
+      });
   };
   
   const goToNextLevel = () => {
