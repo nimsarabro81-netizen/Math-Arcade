@@ -39,28 +39,16 @@ let nextId = 0;
 const getEquationParts = (str: string): { positives: number[], negatives: number[], answer: number } => {
     try {
         const answer = new Function('return ' + str)();
-
-        // This regex will find all numbers, respecting negative signs and double negatives.
-        // It's a bit complex, but it handles cases like "5 - 8", "1.5 - (-3.5)", and "2 + 2"
-        const matches = str.replace(/\s/g, '').match(/-?\d+(\.\d+)?|\d+(\.\d+)?/g);
         
+        // Sanitize the expression: remove spaces and resolve double negatives.
         const expression = str.replace(/\s/g, '').replace(/--/g, '+');
-        
-        let terms = expression.split(/(?=[+-])/).filter(Boolean);
-        if (!['+','-'].includes(expression[0])) {
-          terms = expression.split(/(?=[+-])/);
-          if (expression.includes('+') || expression.includes('-')) {
-             const firstOpIndex = Math.min(expression.indexOf('+') > -1 ? expression.indexOf('+') : Infinity, expression.indexOf('-') > -1 ? expression.indexOf('-') : Infinity);
-             if (firstOpIndex > 0) {
-                terms.unshift(expression.substring(0, firstOpIndex));
-             }
-          } else {
-            terms = [expression];
-          }
-        }
-        
-        const numbers = terms.map(term => parseFloat(term));
-        
+
+        // This regex splits the string by operators (+ or -) while keeping the operators.
+        // It looks for a position that is preceded by a number and followed by an operator.
+        const parts = expression.split(/(?<=\d)(?=[+-])/);
+
+        const numbers = parts.map(part => parseFloat(part));
+
         const positives = numbers.filter(n => n > 0);
         const negatives = numbers.filter(n => n < 0).map(n => Math.abs(n));
 
@@ -240,7 +228,7 @@ export function VectorZen() {
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex(prev => prev + 1);
+      setCurrentLevelIndex(prev => prev - 1);
     }
   };
 
@@ -423,7 +411,7 @@ export function VectorZen() {
                                       type="text"
                                       value={prediction.negatives}
                                       onChange={(e) => setPrediction(p => ({...p, negatives: e.target.value}))}
-                                      placeholder="e.g. 3, 1"
+                                      placeholder="e.g. 8"
                                   />
                               </div>
                               <Button type="submit" className="w-full">
@@ -483,3 +471,5 @@ export function VectorZen() {
     </>
   );
 }
+
+    
