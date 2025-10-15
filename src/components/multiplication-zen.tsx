@@ -32,7 +32,14 @@ const getEquationParts = (equation: string): { originalFactor1: number, original
   return { originalFactor1: factor1, originalFactor2: factor2, answer: factor1 * factor2 };
 };
 
-export function MultiplicationZen() {
+interface MultiplicationZenProps {
+    isGameStarted: boolean;
+    score: number;
+    onScoreChange: (newScore: number) => void;
+    onGameComplete: () => void;
+}
+
+export function MultiplicationZen({ isGameStarted, score, onScoreChange, onGameComplete }: MultiplicationZenProps) {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [gamePhase, setGamePhase] = useState<GamePhase>('setup');
   
@@ -64,8 +71,10 @@ export function MultiplicationZen() {
   }, []);
 
   useEffect(() => {
-    setupLevel(currentLevelIndex);
-  }, [currentLevelIndex, setupLevel]);
+    if (isGameStarted) {
+        setupLevel(currentLevelIndex);
+    }
+  }, [currentLevelIndex, setupLevel, isGameStarted]);
 
   const handleChooseGroup = (chosenFactor: number) => {
     const { originalFactor1, originalFactor2 } = originalEquation;
@@ -131,11 +140,18 @@ export function MultiplicationZen() {
 
     if (parseInt(userAnswer, 10) === currentResult && parseInt(userAnswer, 10) === originalEquation.answer) {
       setIsLevelSolved(true);
+      onScoreChange(score + 25);
       toast({
         title: 'Correct!',
         description: 'You solved the multiplication problem!',
       });
+
+      if (currentLevelIndex === levels.length - 1) {
+          onGameComplete();
+      }
+
     } else {
+      onScoreChange(Math.max(0, score - 10));
       toast({
         variant: 'destructive',
         title: 'Not quite!',
@@ -144,7 +160,10 @@ export function MultiplicationZen() {
     }
   };
   
-  const resetLevel = () => setupLevel(currentLevelIndex);
+  const resetLevel = () => {
+      setupLevel(currentLevelIndex);
+      onScoreChange(Math.max(0, score - 10));
+  };
   
   const goToNextLevel = () => {
     if (currentLevelIndex < levels.length - 1) {
@@ -160,12 +179,20 @@ export function MultiplicationZen() {
   
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
+  if (!isGameStarted) {
+    return (
+        <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all flex items-center justify-center min-h-[500px]">
+            <p className="text-muted-foreground">Start the game to begin!</p>
+        </Card>
+    );
+  }
+
   return (
     <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
       <CardHeader className="p-4 border-b">
         <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0}>
+            <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0 || allLevelsComplete}>
               <ChevronLeft />
             </Button>
             <div className="text-center px-4">
@@ -177,7 +204,7 @@ export function MultiplicationZen() {
             </Button>
           </div>
           <div className="flex items-center gap-4">
-             <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
+             <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border" disabled={allLevelsComplete}>
               <RotateCw />
             </Button>
           </div>
@@ -215,10 +242,10 @@ export function MultiplicationZen() {
                     
                     {/* Action Buttons */}
                     <div className="md:col-span-1 flex flex-col items-center justify-center gap-4">
-                        <Button onClick={handleStamp} className="w-full">
+                        <Button onClick={handleStamp} className="w-full" disabled={isLevelSolved}>
                             <Copy className="mr-2" /> Step 2: Stamp Group
                         </Button>
-                        <Button onClick={handleFlip} className="w-full" variant="destructive" disabled={activeEquation.factor1 > 0}>
+                        <Button onClick={handleFlip} className="w-full" variant="destructive" disabled={activeEquation.factor1 > 0 || isLevelSolved}>
                             <Repeat className="mr-2" /> Step 3: Flip Signs
                         </Button>
                     </div>
@@ -255,17 +282,13 @@ export function MultiplicationZen() {
                             />
                         ))}
 
-                        {isLevelSolved && (
+                        {isLevelSolved && !allLevelsComplete && (
                             <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center animate-fade-in backdrop-blur-sm">
                                 <CheckCircle2 className="w-24 h-24 text-green-500" />
                                 <h2 className="text-4xl font-bold font-headline mt-4">Correct!</h2>
-                                {!allLevelsComplete ? (
-                                    <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
-                                        Next Level <ArrowRight className="ml-2" />
-                                    </Button>
-                                ) : (
-                                    <p className="text-muted-foreground mt-2">You've mastered multiplication!</p>
-                                )}
+                                <Button onClick={goToNextLevel} className="mt-6 animate-pulse">
+                                    Next Level <ArrowRight className="ml-2" />
+                                </Button>
                             </div>
                         )}
                     </CardContent>

@@ -1,3 +1,4 @@
+
 import { Ranking } from '@/components/ranking';
 import { AdminControls } from '@/components/admin-controls';
 
