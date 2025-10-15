@@ -81,31 +81,30 @@ export default function Home() {
   };
   
   useEffect(() => {
-      if (allGamesComplete) {
-        let finalScoreValue = score;
-         if (startTime) {
-            const endTime = Date.now();
-            const durationInSeconds = (endTime - startTime) / 1000;
-            const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
-            finalScoreValue += timeBonus;
-          }
-          setFinalScore(finalScoreValue);
-          saveScore(finalScoreValue);
-      }
-  }, [allGamesComplete, score, startTime, saveScore]);
-
-  useEffect(() => {
-    if (finalScore !== null && startTime) {
+    if (allGamesComplete) {
+      let finalScoreValue = score;
+      if (startTime) {
         const endTime = Date.now();
         const durationInSeconds = (endTime - startTime) / 1000;
         const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
-        toast({
-            title: `Time Bonus: +${timeBonus}`,
-            description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
-        });
+        finalScoreValue += timeBonus;
+      }
+      setFinalScore(finalScoreValue);
+      saveScore(finalScoreValue);
+    }
+  }, [allGamesComplete, score, saveScore, startTime]);
+
+  useEffect(() => {
+    if (finalScore !== null) {
+      const durationInSeconds = (Date.now() - (startTime ?? Date.now())) / 1000;
+      const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
+      toast({
+        title: `Time Bonus: +${timeBonus}`,
+        description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finalScore, toast]);
+  }, [finalScore]);
   
   const startOver = () => {
     setIsGameStarted(false);
@@ -163,9 +162,6 @@ export default function Home() {
                   <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
                   <h2 className="text-4xl font-bold font-headline mt-4">You're a VectorZen Master!</h2>
                   <p className="text-muted-foreground mt-2">Final Score: {finalScore ?? score}</p>
-                  <Button onClick={startOver} className="mt-6">
-                    Play Again
-                  </Button>
                 </div>
               )}
             <Tabs value={gameMode} onValueChange={(value) => setGameMode(value as any)} className={cn("w-full", allGamesComplete && "blur-sm")}>
