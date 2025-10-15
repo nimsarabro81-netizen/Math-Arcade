@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Ball } from "@/components/ball";
-import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } from "lucide-react";
+import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -172,7 +172,7 @@ export function VectorZen() {
         return;
     }
 
-    if (parseInt(userAnswer) === correctAnswer) {
+    if (parseInt(userAnswer) === currentResult) {
       setIsLevelSolved(true);
       const newScore = score + 25;
       
@@ -221,6 +221,16 @@ export function VectorZen() {
       });
     }
   };
+
+  const handleAddBall = (value: 1 | -1) => {
+    if (isLevelSolved) return;
+    const newBall: AnimatedBall = {
+      id: nextId++,
+      value,
+      state: 'entering'
+    };
+    setBalls(prev => [...prev, newBall]);
+  }
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
@@ -292,6 +302,14 @@ export function VectorZen() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+             <div className="p-4 bg-muted/20 border-b flex items-center justify-center gap-4">
+                <Button onClick={() => handleAddBall(1)} variant="outline" disabled={isLevelSolved}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Positive
+                </Button>
+                <Button onClick={() => handleAddBall(-1)} variant="outline" disabled={isLevelSolved}>
+                    <Minus className="mr-2 h-4 w-4" /> Add Negative
+                </Button>
+            </div>
             <div className={cn(
               "relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500",
               isLevelSolved && "bg-green-500/10"
@@ -347,3 +365,5 @@ export function VectorZen() {
     </>
   );
 }
+
+    
