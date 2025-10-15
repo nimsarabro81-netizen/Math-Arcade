@@ -95,7 +95,7 @@ export default function Home() {
             setScore(finalScore);
             saveScore(finalScore);
       }
-  }, [allGamesComplete, score, startTime, saveScore, toast]);
+  }, [allGamesComplete, score, saveScore, startTime, toast]);
   
   const startOver = () => {
     setIsGameStarted(false);
