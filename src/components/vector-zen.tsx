@@ -35,60 +35,49 @@ const getEquationParts = (
   str: string
 ): { positives: number[]; negatives: number[]; answer: number } => {
     try {
-        // This will correctly calculate the answer, e.g., 1.5 - (-3.5) = 5
         const answer = new Function('return ' + str)();
         
-        // This regex is designed to find numbers (including decimals and negatives)
-        // while ignoring operators inside parentheses that are part of a negative number, like in -(-3.5)
-        const numberRegex = /-?\d+(\.\d+)?/g;
-        let match;
-        const numbers = [];
-        
-        // A more manual parsing to respect context (like double negations)
         let expression = str.replace(/\s/g, '');
         
-        // Replace subtraction of a negative with addition to simplify parsing what the user sees
-        expression = expression.replace(/-\(-/g, '+');
-
-        let currentNumber = '';
-        let currentSign = 1;
-        const positives = [];
-        const negatives = [];
-
-        for (let i = 0; i < expression.length; i++) {
-            const char = expression[i];
-
-            if (!isNaN(parseInt(char)) || char === '.') {
-                currentNumber += char;
-            } else {
-                if (currentNumber) {
-                    if (currentSign === 1) {
-                        positives.push(parseFloat(currentNumber));
-                    } else {
-                        negatives.push(parseFloat(currentNumber));
-                    }
-                    currentNumber = '';
-                }
-                
-                if (char === '-') {
-                    currentSign = -1;
-                } else if (char === '+') {
-                    currentSign = 1;
-                }
-            }
-        }
-        if (currentNumber) {
-             if (currentSign === 1) {
-                positives.push(parseFloat(currentNumber));
-            } else {
-                negatives.push(parseFloat(currentNumber));
-            }
-        }
-
-        // The original request was to consider -(-3.5) as a negative number from the user's POV
-        // before simplification.
         if (str === '1.5 - (-3.5)') {
             return { positives: [1.5], negatives: [3.5], answer: 5 };
+        }
+
+        const positives: number[] = [];
+        const negatives: number[] = [];
+        
+        // This regex finds all numbers, including negative ones
+        const numbers = expression.match(/-?\d+(\.\d+)?/g)?.map(Number) || [];
+        
+        // This is a simplified approach, we need to determine the effective sign
+        let tempExpression = expression;
+        
+        // Replace subtraction of negative with plus for easier parsing of user intention
+        tempExpression = tempExpression.replace(/--/g, '+');
+        if (tempExpression.startsWith('+')) {
+            tempExpression = tempExpression.substring(1);
+        }
+
+        // Split by operators to get the numbers
+        const parts = tempExpression.split(/[+-]/).filter(Boolean).map(Number);
+        
+        // Find the operators
+        const operators = tempExpression.split(/\d+(\.\d+)?/).filter(Boolean);
+
+        let sign = 1;
+        if (!expression.startsWith('-')) {
+           positives.push(parts[0]);
+        } else {
+           negatives.push(parts[0]);
+           sign = -1;
+        }
+
+        for (let i = 0; i < operators.length; i++) {
+            if (operators[i] === '+') {
+                positives.push(parts[i+1]);
+            } else {
+                negatives.push(parts[i+1]);
+            }
         }
 
 
@@ -231,11 +220,11 @@ export function VectorZen() {
     const ball = balls.find((b) => b.id === clickedBallId);
     if (!ball || ball.state === 'exiting' || isLevelSolved) return;
 
-    const newSelectedIds = selectedBallIds.includes(clickedBallId)
-      ? selectedBallIds.filter((id) => id !== clickedBallId)
-      : [...selectedBallIds, clickedBallId];
-      
-    setSelectedBallIds(newSelectedIds);
+    setSelectedBallIds((prevIds) =>
+      prevIds.includes(clickedBallId)
+        ? prevIds.filter((id) => id !== clickedBallId)
+        : [...prevIds, clickedBallId]
+    );
   };
 
   useEffect(() => {
@@ -252,8 +241,9 @@ export function VectorZen() {
       }, 500);
       return () => clearTimeout(timer);
     } else {
-      // If two are selected and they don't cancel, just deselect them both.
-      setSelectedBallIds([]);
+       setTimeout(() => {
+        setSelectedBallIds([]);
+       }, 200)
     }
 
   }, [selectedBallIds, balls]);
