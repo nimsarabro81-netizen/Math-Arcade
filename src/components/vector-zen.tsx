@@ -23,7 +23,7 @@ type AnimatedBall = BallType & {
 
 type LevelStage = 'prediction' | 'pairing';
 
-const levels = ['1.5 - (-3.5)', '2 + 2', '4 - 4', '5 - 8'];
+const levels = ['1.5 - (-3.5)', '2 + 2', '5 - 8'];
 
 let nextId = 0;
 
@@ -226,12 +226,10 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
 
-    const pair = selectedBallIds.map(id => balls.find(b => b.id === id)).filter(Boolean) as AnimatedBall[];
-    if (pair.length < 2) return;
-    
-    const isPair = pair[0].value === -pair[1].value;
+    const pair = balls.filter(b => selectedBallIds.includes(b.id));
 
-    if (isPair) {
+    if (pair.length === 2 && pair[0].value === -pair[1].value) {
+      // It's a valid pair, animate them out
       setBalls(currentBalls => currentBalls.map(b => 
         selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
       ));
@@ -243,12 +241,13 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       
       return () => clearTimeout(timer);
     } else {
+        // Not a pair, just deselect
         const timer = setTimeout(() => {
           setSelectedBallIds([]);
         }, 200);
         return () => clearTimeout(timer);
     }
-  }, [selectedBallIds, balls]);
+  }, [selectedBallIds]);
 
 
   const resetLevel = () => {
@@ -264,7 +263,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex((prev) => prev + 1);
+      setCurrentLevelIndex((prev) => prev - 1);
     }
   };
 
@@ -281,16 +280,24 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     // Sort balls by absolute value to handle halves correctly
     checkBalls.sort((a,b) => Math.abs(a.value) - Math.abs(b.value));
 
-    while (checkBalls.length > 0) {
-      const currentBall = checkBalls.pop();
-      if (!currentBall) break;
-      
-      const pairIndex = checkBalls.findIndex(b => b.value === -currentBall.value);
+    while (checkBalls.length > 1) {
+        const currentBall = checkBalls.pop();
+        if (!currentBall) break;
+        
+        const pairIndex = checkBalls.findIndex(b => b.value === -currentBall.value);
 
-      if (pairIndex !== -1) {
-        checkBalls.splice(pairIndex, 1);
-        hasUnpaired = true; 
-      }
+        if (pairIndex !== -1) {
+            checkBalls.splice(pairIndex, 1);
+        } else {
+            hasUnpaired = true;
+            break;
+        }
+    }
+
+    if(checkBalls.length > 0) {
+      const remainingValues = checkBalls.map(b => b.value);
+      const allSameSign = remainingValues.every(v => v > 0) || remainingValues.every(v => v < 0);
+      if(!allSameSign) hasUnpaired = true;
     }
     
     if (hasUnpaired) {
