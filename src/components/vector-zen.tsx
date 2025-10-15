@@ -34,58 +34,87 @@ let nextId = 0;
 const getEquationParts = (
   str: string
 ): { positives: number[]; negatives: number[]; answer: number } => {
-    try {
-        const answer = new Function('return ' + str)();
-        
-        let expression = str.replace(/\s/g, '');
-        
-        if (str === '1.5 - (-3.5)') {
-            return { positives: [1.5], negatives: [3.5], answer: 5 };
-        }
+  try {
+    // This will still calculate the correct final answer for validation
+    const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
-        const positives: number[] = [];
-        const negatives: number[] = [];
-        
-        // This regex finds all numbers, including negative ones
-        const numbers = expression.match(/-?\d+(\.\d+)?/g)?.map(Number) || [];
-        
-        // This is a simplified approach, we need to determine the effective sign
-        let tempExpression = expression;
-        
-        // Replace subtraction of negative with plus for easier parsing of user intention
-        tempExpression = tempExpression.replace(/--/g, '+');
-        if (tempExpression.startsWith('+')) {
-            tempExpression = tempExpression.substring(1);
-        }
+    const positives: number[] = [];
+    const negatives: number[] = [];
 
-        // Split by operators to get the numbers
-        const parts = tempExpression.split(/[+-]/).filter(Boolean).map(Number);
-        
-        // Find the operators
-        const operators = tempExpression.split(/\d+(\.\d+)?/).filter(Boolean);
-
-        let sign = 1;
-        if (!expression.startsWith('-')) {
-           positives.push(parts[0]);
-        } else {
-           negatives.push(parts[0]);
-           sign = -1;
-        }
-
-        for (let i = 0; i < operators.length; i++) {
-            if (operators[i] === '+') {
-                positives.push(parts[i+1]);
-            } else {
-                negatives.push(parts[i+1]);
-            }
-        }
-
-
-        return { positives, negatives, answer };
-    } catch (e) {
-        console.error('Could not parse equation:', e);
-        return { positives: [], negatives: [], answer: 0 };
+    // This regex finds numbers (including decimals) and their preceding operators.
+    const regex = /([+-]?)\s*(-?\d+(\.\d+)?)/g;
+    
+    // Special case for the start of the string if it doesn't have an operator
+    let expression = str.replace(/\s/g, '').replace(/\(-/g, '(~');
+    
+    if (expression.startsWith('(')) {
+        expression = '0+' + expression;
     }
+    
+    const tokens = expression.match(/([()~])|(\d+(\.\d+)?)|([+-])/g) || [];
+
+    const RPN: (string | number)[] = [];
+    const operators: string[] = [];
+    const precedence: { [key: string]: number } = { '+': 1, '-': 1, '~': 3 };
+
+    for (const token of tokens) {
+        if (!isNaN(parseFloat(token))) {
+            RPN.push(parseFloat(token));
+        } else if (token === '(') {
+            operators.push(token);
+        } else if (token === ')') {
+            while (operators.length && operators[operators.length - 1] !== '(') {
+                RPN.push(operators.pop()!);
+            }
+            operators.pop(); // Pop '('
+        } else if (token === '~') { // Unary minus
+            operators.push(token);
+        }
+        else { // Other operators
+            while (operators.length && precedence[operators[operators.length - 1]] >= precedence[token]) {
+                RPN.push(operators.pop()!);
+            }
+            operators.push(token);
+        }
+    }
+    while(operators.length) {
+        RPN.push(operators.pop()!);
+    }
+
+    const finalValues: {val: number, sign: number}[] = [];
+    const evalStack: any[] = [];
+    
+    for (const token of RPN) {
+        if(typeof token === 'number') {
+            evalStack.push({val: token, sign: 1});
+        } else if (token === '~') {
+            const operand = evalStack.pop();
+            evalStack.push({val: operand.val, sign: -operand.sign});
+        }
+        else if (token === '+') {
+            const right = evalStack.pop();
+            const left = evalStack.pop();
+            finalValues.push(left, right);
+        } else if (token === '-') {
+            const right = evalStack.pop();
+            const left = evalStack.pop();
+            finalValues.push(left, {val: right.val, sign: -right.sign});
+        }
+    }
+     while (evalStack.length) {
+        finalValues.push(evalStack.pop());
+    }
+
+    finalValues.forEach(v => {
+        if (v.sign > 0) positives.push(v.val);
+        else negatives.push(v.val);
+    })
+
+    return { positives, negatives, answer };
+  } catch (e) {
+    console.error('Could not parse equation:', e);
+    return { positives: [], negatives: [], answer: 0 };
+  }
 };
 
 const createBallsFromParts = (positives: number[], negatives: number[]): BallType[] => {
@@ -110,7 +139,7 @@ export function VectorZen() {
   const [levelStage, setLevelStage] = useState<LevelStage>('prediction');
 
   // Prediction state
-  const [correctBallCounts, setCorrectBallCounts] = useState({ positives: [] as number[], negatives: [] as number[] });
+  const [correctBallCounts, setCorrectBallCounts] = useState<{ positives: number[], negatives: number[] }>({ positives: [], negatives: [] });
   const [prediction, setPrediction] = useState({ positives: '', negatives: '' });
   const [predictionAttempts, setPredictionAttempts] = useState(0);
 
@@ -203,7 +232,7 @@ export function VectorZen() {
         });
       }
 
-      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives);
+      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives.map(Math.abs));
       setBalls(newBalls.map((b) => ({ ...b, state: 'entering' })));
       setLevelStage('pairing');
     } else {
@@ -243,10 +272,9 @@ export function VectorZen() {
     } else {
        setTimeout(() => {
         setSelectedBallIds([]);
-       }, 200)
+       }, 200);
     }
-
-  }, [selectedBallIds, balls]);
+  }, [selectedBallIds]);
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
