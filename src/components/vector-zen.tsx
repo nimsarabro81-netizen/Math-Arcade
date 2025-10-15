@@ -226,10 +226,9 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
   useEffect(() => {
     if (selectedBallIds.length !== 2) return;
 
-    const pair = balls.filter(b => selectedBallIds.includes(b.id));
-
+    const pair = balls.filter(b => selectedBallIds.includes(b.id) && b.state !== 'pairing' && b.state !== 'exiting');
+    
     if (pair.length === 2 && pair[0].value === -pair[1].value) {
-      // It's a valid pair, animate them out
       setBalls(currentBalls => currentBalls.map(b => 
         selectedBallIds.includes(b.id) ? { ...b, state: 'pairing' } : b
       ));
@@ -237,16 +236,16 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       const timer = setTimeout(() => {
         setBalls(prev => prev.filter(b => !selectedBallIds.includes(b.id)));
         setSelectedBallIds([]);
-      }, 500); // Wait for fade out
+      }, 500);
       
       return () => clearTimeout(timer);
     } else {
-        // Not a pair, just deselect
         const timer = setTimeout(() => {
           setSelectedBallIds([]);
         }, 200);
         return () => clearTimeout(timer);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBallIds]);
 
 
@@ -271,34 +270,18 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     e.preventDefault();
     if (isLevelSolved) return;
 
-    const currentResult = balls.filter((b) => b.state !== 'exiting' && b.state !== 'pairing').reduce((sum, b) => sum + b.value, 0);
+    const remainingBalls = balls.filter((b) => b.state !== 'exiting' && b.state !== 'pairing');
+    const currentResult = remainingBalls.reduce((sum, b) => sum + b.value, 0);
     
-    // Create a copy of the balls to manipulate for checking pairs
-    let checkBalls = [...balls.filter(b => b.state !== 'exiting' && b.state !== 'pairing')];
-    let hasUnpaired = false;
-    
-    // Sort balls by absolute value to handle halves correctly
-    checkBalls.sort((a,b) => Math.abs(a.value) - Math.abs(b.value));
+    const counts = remainingBalls.reduce((acc, ball) => {
+        if (ball.value === 1) acc.posFull++;
+        else if (ball.value === -1) acc.negFull++;
+        else if (ball.value === 0.5) acc.posHalf++;
+        else if (ball.value === -0.5) acc.negHalf++;
+        return acc;
+    }, { posFull: 0, negFull: 0, posHalf: 0, negHalf: 0 });
 
-    while (checkBalls.length > 1) {
-        const currentBall = checkBalls.pop();
-        if (!currentBall) break;
-        
-        const pairIndex = checkBalls.findIndex(b => b.value === -currentBall.value);
-
-        if (pairIndex !== -1) {
-            checkBalls.splice(pairIndex, 1);
-        } else {
-            hasUnpaired = true;
-            break;
-        }
-    }
-
-    if(checkBalls.length > 0) {
-      const remainingValues = checkBalls.map(b => b.value);
-      const allSameSign = remainingValues.every(v => v > 0) || remainingValues.every(v => v < 0);
-      if(!allSameSign) hasUnpaired = true;
-    }
+    const hasUnpaired = counts.posFull !== counts.negFull || counts.posHalf !== counts.negHalf;
     
     if (hasUnpaired) {
       toast({
