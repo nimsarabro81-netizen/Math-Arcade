@@ -81,7 +81,8 @@ export default function Home() {
   
   useEffect(() => {
       if (allGamesComplete) {
-          let finalScore = score;
+        setScore(currentScore => {
+          let finalScore = currentScore;
            if (startTime) {
               const endTime = Date.now();
               const durationInSeconds = (endTime - startTime) / 1000;
@@ -92,10 +93,11 @@ export default function Home() {
                 description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
               });
             }
-            setScore(finalScore);
             saveScore(finalScore);
+            return finalScore;
+        });
       }
-  }, [allGamesComplete, score, saveScore, startTime, toast]);
+  }, [allGamesComplete, startTime, saveScore, toast]);
   
   const startOver = () => {
     setIsGameStarted(false);
