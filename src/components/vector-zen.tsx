@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Ball } from '@/components/ball';
-import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award, Plus, Minus, HelpCircle } from 'lucide-react';
+import { ArrowRight, RotateCw, ChevronLeft, ChevronRight, CheckCircle2, Award } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { Label } from './ui/label';
 
 type BallType = {
   id: number;
-  value: 1 | -1;
+  value: 1 | -1 | 0.5 | -0.5;
 };
 
 type AnimatedBall = BallType & {
@@ -34,55 +34,66 @@ let nextId = 0;
 const getEquationParts = (
   str: string
 ): { positives: number[]; negatives: number[]; answer: number } => {
-  try {
-    const answer = new Function('return ' + str)();
-    let expression = str.replace(/\s/g, '');
+    try {
+        const answer = new Function('return ' + str)();
+        let expression = str.replace(/\s/g, '');
 
-    // Replace '--' with '+' to handle double negatives for the purpose of splitting,
-    // but we will parse based on original structure.
-    expression = expression.replace(/--/g, '+');
+        // Handle case where expression starts with a negative number
+        if (expression.startsWith('-')) {
+            expression = '0' + expression;
+        }
 
-    // Tokenize based on operators, but keep numbers (including negatives) together
-    const tokens = expression.match(/-?\d+\.?\d*|[+*/()]/g) || [];
+        // Add padding around operators to ensure splitting
+        expression = expression.replace(/([+*/()])/g, ' $1 ');
+        // Specifically handle subtraction/negation
+        expression = expression.replace(/-/g, ' - ');
 
-    const positives: number[] = [];
-    const negatives: number[] = [];
+        const tokens = expression.split(/\s+/).filter(Boolean);
+        const positives: number[] = [];
+        const negatives: number[] = [];
+        let nextIsNegative = false;
 
-    // The original string is the source of truth for parsing context
-    const originalExpression = str.replace(/\s/g, '');
-
-    if (originalExpression.startsWith('1.5-(-3.5)')) {
-        positives.push(1.5);
-        negatives.push(3.5);
-    } else {
-        tokens.forEach(token => {
+        for (let i = 0; i < tokens.length; i++) {
+            const token = tokens[i];
             const num = parseFloat(token);
-            if (!isNaN(num)) {
-                if (num >= 0) {
-                    positives.push(num);
-                } else {
-                    negatives.push(Math.abs(num));
-                }
-            }
-        });
-    }
 
-    return { positives, negatives, answer };
-  } catch (e) {
-    console.error('Could not parse equation:', e);
-    return { positives: [], negatives: [], answer: 0 };
-  }
+            if (!isNaN(num)) {
+                if (nextIsNegative) {
+                    negatives.push(num);
+                    nextIsNegative = false;
+                } else {
+                    positives.push(num);
+                }
+            } else if (token === '-') {
+                // If the next token is not a parenthesis, it's a subtraction/negation
+                if (i + 1 < tokens.length && tokens[i + 1] !== '(') {
+                   nextIsNegative = true;
+                }
+                 // if it is a parenthesis, the inner term will be handled
+            }
+        }
+
+        return { positives, negatives, answer };
+    } catch (e) {
+        console.error('Could not parse equation:', e);
+        return { positives: [], negatives: [], answer: 0 };
+    }
 };
 
-
-const createBallsFromParts = (positives: number, negatives: number): BallType[] => {
+const createBallsFromParts = (positives: number[], negatives: number[]): BallType[] => {
   const newBalls: BallType[] = [];
-  for (let i = 0; i < positives; i++) {
-    newBalls.push({ id: nextId++, value: 1 });
-  }
-  for (let i = 0; i < negatives; i++) {
-    newBalls.push({ id: nextId++, value: -1 });
-  }
+  positives.forEach(p => {
+    const full = Math.floor(p);
+    const half = p % 1;
+    for (let i = 0; i < full; i++) newBalls.push({ id: nextId++, value: 1 });
+    if (half > 0) newBalls.push({ id: nextId++, value: 0.5 });
+  });
+  negatives.forEach(n => {
+    const full = Math.floor(n);
+    const half = n % 1;
+    for (let i = 0; i < full; i++) newBalls.push({ id: nextId++, value: -1 });
+    if (half > 0) newBalls.push({ id: nextId++, value: -0.5 });
+  });
   return newBalls;
 };
 
@@ -186,9 +197,7 @@ export function VectorZen() {
         });
       }
 
-      const totalPositives = Math.round(correctBallCounts.positives.reduce((sum, n) => sum + n, 0));
-      const totalNegatives = Math.round(correctBallCounts.negatives.reduce((sum, n) => sum + n, 0));
-      const newBalls = createBallsFromParts(totalPositives, totalNegatives);
+      const newBalls = createBallsFromParts(correctBallCounts.positives, correctBallCounts.negatives);
       setBalls(newBalls.map((b) => ({ ...b, state: 'entering' })));
       setLevelStage('pairing');
     } else {
@@ -205,35 +214,32 @@ export function VectorZen() {
     const ball = balls.find((b) => b.id === clickedBallId);
     if (!ball || ball.state === 'exiting' || isLevelSolved) return;
 
-    if (selectedBallIds.includes(clickedBallId)) {
-      setSelectedBallIds((prev) => prev.filter((id) => id !== clickedBallId));
-      return;
-    }
-
-    if (selectedBallIds.length === 0) {
-      setSelectedBallIds([clickedBallId]);
-    } else {
-      const firstSelectedBall = balls.find((b) => b.id === selectedBallIds[0]);
-      if (firstSelectedBall && firstSelectedBall.value !== ball.value) {
-        setSelectedBallIds((prev) => [...prev, clickedBallId]);
-      } else {
-        setSelectedBallIds([clickedBallId]);
-      }
-    }
+    const newSelectedIds = selectedBallIds.includes(clickedBallId)
+      ? selectedBallIds.filter((id) => id !== clickedBallId)
+      : [...selectedBallIds, clickedBallId];
+      
+    setSelectedBallIds(newSelectedIds);
   };
 
   useEffect(() => {
     if (selectedBallIds.length < 2) return;
+    
+    const selectedBalls = balls.filter(b => selectedBallIds.includes(b.id));
+    const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
 
-    setBalls((prev) => prev.map((b) => (selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b)));
+    if (sum === 0) {
+      setBalls((prev) => prev.map((b) => (selectedBallIds.includes(b.id) ? { ...b, state: 'exiting' } : b)));
+      const timer = setTimeout(() => {
+        setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
+        setSelectedBallIds([]);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else if (selectedBallIds.length === 2) {
+      // If two are selected and they don't cancel, just deselect the first one and keep the second one.
+      setSelectedBallIds([selectedBallIds[1]]);
+    }
 
-    const timer = setTimeout(() => {
-      setBalls((prev) => prev.filter((b) => !selectedBallIds.includes(b.id)));
-      setSelectedBallIds([]);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [selectedBallIds]);
+  }, [selectedBallIds, balls]);
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
@@ -284,7 +290,7 @@ export function VectorZen() {
       return;
     }
 
-    if (parseInt(userAnswer) === currentResult && parseInt(userAnswer) === correctAnswer) {
+    if (parseFloat(userAnswer) === currentResult && parseFloat(userAnswer) === correctAnswer) {
       setIsLevelSolved(true);
       let newScore = score + 25;
 
@@ -342,6 +348,10 @@ export function VectorZen() {
     setUsername('');
     setStartTime(null);
   };
+  
+  const getBallSize = (value: number): 'full' | 'half' => {
+      return Math.abs(value) === 1 ? 'full' : 'half';
+  }
 
   return (
     <>
@@ -465,7 +475,8 @@ export function VectorZen() {
               {balls.map((ball) => (
                 <Ball
                   key={ball.id}
-                  type={ball.value === 1 ? 'positive' : 'negative'}
+                  type={ball.value > 0 ? 'positive' : 'negative'}
+                  size={getBallSize(ball.value)}
                   selected={selectedBallIds.includes(ball.id)}
                   state={ball.state}
                   onClick={() => handleBallClick(ball.id)}
@@ -498,6 +509,7 @@ export function VectorZen() {
               <form onSubmit={handleSubmitAnswer} className="flex w-full max-w-sm items-center space-x-2">
                 <Input
                   type="number"
+                  step="0.5"
                   placeholder="Your Answer"
                   value={userAnswer}
                   onChange={(e) => setUserAnswer(e.target.value)}
