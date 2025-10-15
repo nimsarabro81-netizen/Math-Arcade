@@ -31,26 +31,26 @@ const levels = ['1.5 - (-3.5)', '2 + 2', '4 - 4', '5 - 8'];
 
 let nextId = 0;
 
-const getEquationParts = (
-  str: string
-): { positives: number[]; negatives: number[]; answer: number } => {
+const getEquationParts = (str: string): { positives: number[]; negatives: number[]; answer: number } => {
   try {
+    // This will correctly evaluate the expression, e.g., "1.5 - (-3.5)" becomes 5.
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
-
-    if (str === '1.5 - (-3.5)') {
-        return { positives: [1.5], negatives: [3.5], answer };
-    }
 
     const positives: number[] = [];
     const negatives: number[] = [];
-    
-    // Simplified regex to find numbers and their potential preceding signs
+
+    // Use regex to find all numbers (including decimals) and their preceding operators.
+    // This will match numbers like -3.5, +2, 5, etc.
     const regex = /([+-]?)\s*\(?(-?\d+(\.\d+)?)\)?/g;
-    let match;
-    const expression = str.replace(/\s/g, '');
     
-    // Special handling for the first number if it has no sign
-    const firstNumMatch = expression.match(/^-?\d+(\.\d+)?/);
+    // Pre-process the string for easier parsing. Replace ' - (' with ' -' and ' - -' with ' + '
+    const processedStr = str.replace(/\s/g, '').replace(/-\(-/g, '+').replace('-(', '-');
+
+    let match;
+    let lastIndex = 0;
+
+    // Handle the first number separately if it doesn't have a sign
+    const firstNumMatch = processedStr.match(/^-?\d+(\.\d+)?/);
     if (firstNumMatch) {
       const num = parseFloat(firstNumMatch[0]);
       if (num >= 0) {
@@ -58,26 +58,23 @@ const getEquationParts = (
       } else {
         negatives.push(Math.abs(num));
       }
+      lastIndex = firstNumMatch[0].length;
     }
-    
-    // Handle subsequent numbers with operators
-    const remainingExpr = expression.substring(firstNumMatch ? firstNumMatch[0].length : 0);
-    const subsequentRegex = /([+-])\(?(-?\d+(\.\d+)?)\)?/g;
 
+    const remainingExpr = processedStr.substring(lastIndex);
+    const subsequentRegex = /([+-])(\d+(\.\d+)?)/g;
+    
     while ((match = subsequentRegex.exec(remainingExpr)) !== null) {
       const operator = match[1];
-      const valueStr = match[2];
-      const value = parseFloat(valueStr);
+      const value = parseFloat(match[2]);
 
       if (operator === '+') {
-        if (value >= 0) positives.push(value);
-        else negatives.push(Math.abs(value));
-      } else if (operator === '-') {
-        if (value >= 0) negatives.push(value);
-        else positives.push(Math.abs(value));
+        positives.push(value);
+      } else { // operator === '-'
+        negatives.push(value);
       }
     }
-
+    
     return { positives, negatives, answer };
   } catch (e) {
     console.error('Could not parse equation:', e);
@@ -248,6 +245,8 @@ export function VectorZen() {
     if (selectedBallIds.length !== 2) return;
     
     const selectedBalls = balls.filter(b => selectedBallIds.includes(b.id));
+    if (selectedBalls.length < 2) return;
+
     const sum = selectedBalls.reduce((acc, b) => acc + b.value, 0);
 
     if (sum === 0) {
@@ -262,7 +261,7 @@ export function VectorZen() {
         setSelectedBallIds([]);
        }, 200);
     }
-  }, [selectedBallIds, balls]);
+  }, [selectedBallIds]);
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
@@ -555,3 +554,4 @@ export function VectorZen() {
     </>
   );
 }
+ 
