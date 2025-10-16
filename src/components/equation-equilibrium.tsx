@@ -151,17 +151,14 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
 
   const currentExpression = levels[currentLevelIndex];
   
-  const setupLevel = useCallback((levelIndex: number) => {
-    const parsedEq = parseEquation(levels[levelIndex]);
+  useEffect(() => {
+    const parsedEq = parseEquation(levels[currentLevelIndex]);
     setLevelState(parsedEq);
     setIsLevelSolved(false);
     setUserAnswer('');
     setOpApplied({side: null, op: null});
-  }, []);
+  }, [currentLevelIndex]);
 
-  useEffect(() => {
-    setupLevel(currentLevelIndex);
-  }, [currentLevelIndex, setupLevel]);
 
   const applyOp = (terms: {x: number, c: number}, operation: {op: string, value: number}) => {
       let newTerms = { ...terms };
@@ -194,23 +191,20 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
             return;
         }
         
-        setLevelState(currentState => {
-            const firstSide = opApplied.side!;
-            const secondSide = side;
+        const firstSide = opApplied.side!;
+        const secondSide = side;
 
-            const firstResult = applyOp(currentState[firstSide], opApplied.op);
-            const secondResult = applyOp(currentState[secondSide], operation);
+        const firstResult = applyOp(levelState[firstSide], opApplied.op);
+        const secondResult = applyOp(levelState[secondSide], operation);
+        
+        if (firstResult && secondResult) {
+            setLevelState({
+                [firstSide]: firstResult,
+                [secondSide]: secondResult,
+            } as any);
+        }
 
-            if (firstResult && secondResult) {
-                return {
-                    [firstSide]: firstResult,
-                    [secondSide]: secondResult,
-                } as {left: {x: number, c: number}, right: {x: number, c: number}};
-            }
-            return currentState; // Return original state if any operation was invalid
-        });
-
-        setOpApplied({side: null, op: null}); // Reset after successful application
+        setOpApplied({side: null, op: null}); // Reset after application attempt
 
     } else if (opApplied.side === side) { // Applying to the same side twice
         toast({variant: 'destructive', title: "Wait!", description: "You need to apply the same operation to the OTHER side to keep things balanced."});
@@ -246,7 +240,11 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   };
 
   const resetLevel = () => {
-    setupLevel(currentLevelIndex);
+    const parsedEq = parseEquation(levels[currentLevelIndex]);
+    setLevelState(parsedEq);
+    setIsLevelSolved(false);
+    setUserAnswer('');
+    setOpApplied({side: null, op: null});
     onScoreChange(Math.max(0, score - 5));
     toast({ variant: 'destructive', title: 'Reset Penalty', description: '-5 points for resetting.' });
   }
@@ -358,5 +356,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </DndProvider>
   );
 }
-
-    
