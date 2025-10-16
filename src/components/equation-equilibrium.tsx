@@ -21,7 +21,7 @@ const initialEquation: Equation = {
   right: { x: 0, c: 0 },
 };
 
-const levels = ["2x-1=3", "3x+2=11", "x/2+1=3", "10-x=7", "5-2x=-1", "2x+5=x+7"];
+const levels = ["2x-1=3", "3x+2=11", "x/2+1=3", "10-x=7", "5-2x=-1", "2x+5=x+7", "2x/3=4"];
 
 const parseEquation = (expr: string): Equation => {
   const [leftStr, rightStr] = expr.split('=');
@@ -29,19 +29,22 @@ const parseEquation = (expr: string): Equation => {
   const parseSide = (sideExpr: string): Term => {
     let x = 0;
     let c = 0;
-    const terms = sideExpr.replace(/-/g, '+-').match(/([+-]?)([^+-]+)/g) || [];
+    const terms = sideExpr.replace(/ /g, '').replace(/-/g, '+-').split('+').filter(Boolean);
     
     terms.forEach(termStr => {
       let t = termStr.trim();
       if (t.includes('x')) {
-        t = t.replace('x', '');
-        if (t === '' || t === '+') x += 1;
-        else if (t === '-') x -= 1;
-        else if (t.includes('/')) {
-             const parts = t.split('/');
-             x += (parseFloat(parts[0]) || 1) / parseFloat(parts[1]);
+        if (t.includes('/')) {
+            const [numerator, denominator] = t.split('x/').map(s => s.trim());
+            const numValue = numerator === '' || numerator === '+' ? 1 : parseFloat(numerator);
+            const denValue = parseFloat(denominator);
+            x += numValue / denValue;
+        } else {
+            t = t.replace('x', '');
+            if (t === '' || t === '+') x += 1;
+            else if (t === '-') x -= 1;
+            else x += parseFloat(t);
         }
-        else x += parseFloat(t);
       } else {
         c += parseFloat(t);
       }
@@ -58,7 +61,21 @@ const parseEquation = (expr: string): Equation => {
 const formatTerm = (term: Term, isLeft: boolean) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        const xStr = term.x === 1 ? 'x' : term.x === -1 ? '-x' : `${term.x}x`;
+        // This formatting part is tricky. For now, we'll keep it simple.
+        // A more robust solution might need a fraction library.
+        const isFraction = Math.abs(term.x) < 1 && term.x !== 0;
+        let xStr = '';
+        if (isFraction) {
+             const sign = term.x > 0 ? '' : '-';
+             if(Math.abs(term.x * 3).toFixed(2) === '2.00') {
+                 xStr = `${sign}2x/3`
+             } else {
+                xStr = `${sign}x/${1/Math.abs(term.x)}`;
+             }
+        }
+        else {
+            xStr = term.x === 1 ? 'x' : term.x === -1 ? '-x' : `${term.x}x`;
+        }
         parts.push(xStr);
     }
     if (term.c !== 0) {
@@ -98,6 +115,9 @@ function equationReducer(state: Equation, action: Action): Equation {
               term.c /= value;
               break;
           }
+           // Round to avoid floating point inaccuracies
+           term.x = parseFloat(term.x.toPrecision(10));
+           term.c = parseFloat(term.c.toPrecision(10));
         };
         applyToTerm(draft.left);
         applyToTerm(draft.right);
@@ -211,11 +231,11 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
 
     let isCorrect = false;
     // Check for x = value
-    if (equationState.left.x === 1 && equationState.left.c === 0 && equationState.right.x === 0 && equationState.right.c === finalAnswer) {
+    if (equationState.left.x === 1 && equationState.left.c === 0 && equationState.right.x === 0 && Math.abs(equationState.right.c - finalAnswer) < 0.001) {
         isCorrect = true;
     }
     // Check for value = x
-    if (equationState.right.x === 1 && equationState.right.c === 0 && equationState.left.x === 0 && equationState.left.c === finalAnswer) {
+    if (equationState.right.x === 1 && equationState.right.c === 0 && equationState.left.x === 0 && Math.abs(equationState.left.c - finalAnswer) < 0.001) {
         isCorrect = true;
     }
 
@@ -253,7 +273,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
       // Hint to isolate x
       else if ((left.x !== 1 && left.x !== 0 && left.c === 0) || (right.x !== 1 && right.x !== 0 && right.c === 0)) {
            const xTerm = left.x !== 0 ? left.x : right.x;
-           hintText = `How can you turn '${xTerm}x' into just 'x'?`;
+           hintText = `How can you turn '${formatTerm({x: xTerm, c: 0}, true)}' into just 'x'?`;
       }
       else {
           hintText = 'Keep simplifying until you have x on one side and a number on the other!';
@@ -369,3 +389,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
