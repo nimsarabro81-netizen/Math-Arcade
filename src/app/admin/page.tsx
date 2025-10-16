@@ -1,7 +1,9 @@
 
 import { Ranking } from '@/components/ranking';
 import { AdminControls } from '@/components/admin-controls';
+import { GameStatusControls } from '@/components/game-status-controls';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminPage() {
   return (
@@ -12,10 +14,13 @@ export default function AdminPage() {
             Admin Panel
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Manage the game leaderboards.
+            Manage game settings and leaderboards.
           </p>
         </header>
-        <Tabs defaultValue="vectorzen" className="w-full">
+
+        <GameStatusControls />
+
+        <Tabs defaultValue="vectorzen" className="w-full mt-8">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="vectorzen">VectorZen</TabsTrigger>
             <TabsTrigger value="algebra">Algebra Arena</TabsTrigger>

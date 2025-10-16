@@ -73,6 +73,22 @@
         },
         "required": ["userId", "username", "score", "lastUpdated"]
     },
+    "GameSetting": {
+      "title": "GameSetting",
+      "type": "object",
+      "description": "Stores the active status of a game.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique identifier for the game (e.g., 'vector-zen')."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the game is currently active and visible to players."
+        }
+      },
+      "required": ["id", "isActive"]
+    },
     "User": {
       "title": "User",
       "type": "object",
@@ -115,6 +131,13 @@
                 "$ref": "#/entities/EquationRank"
             },
             "description": "Stores rankings for all users for the Equation Equilibrium game."
+        },
+        {
+          "path": "/gameSettings",
+          "schema": {
+            "$ref": "#/entities/GameSetting"
+          },
+          "description": "Stores the active status for each game."
         }
       ]
   }
