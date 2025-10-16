@@ -38,6 +38,8 @@ const factorableSolutions: Record<string, { solutions: string[][], blocks: strin
 
 const isFactorable = (expr: string) => Object.keys(factorableSolutions).includes(expr);
 
+const formatWithSuperscript = (expr: string) => expr.replace(/([a-zA-Z])\*([a-zA-Z])/g, '$1²').replace(/\*/g, '');
+
 interface Term {
   id: string;
   text: string;
@@ -125,7 +127,7 @@ const TermToken = ({ term, onClick, isSelected, isPlaced, isNew, isPaired }: { t
         isNew && 'animate-pop'
       )}
     >
-      <span className="font-mono text-lg font-bold">{term.text}</span>
+      <span className="font-mono text-lg font-bold">{formatWithSuperscript(term.text)}</span>
     </div>
   );
 };
@@ -151,7 +153,7 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
 
   return (
     <div ref={drop} className={cn('p-4 rounded-lg border-2 border-dashed transition-all min-h-[100px] flex flex-col items-center justify-center', isOver && canDrop ? 'bg-primary/20 border-primary' : 'bg-muted/50')}>
-        <p className="text-sm text-muted-foreground font-bold">{variableType === 'constant' ? 'Constants' : variableType}</p>
+        <p className="text-sm text-muted-foreground font-bold">{variableType === 'constant' ? 'Constants' : formatWithSuperscript(variableType)}</p>
         <div className="flex flex-wrap gap-2 mt-2 justify-center">
             {terms.map(t => (
                 <TermToken 
@@ -189,7 +191,7 @@ const FactorBlock = ({ text, isPlaced }: { text: string, isPlaced?: boolean }) =
                 isPlaced && 'cursor-default bg-primary/10'
             )}
         >
-            <span className="font-mono text-lg font-bold">{text}</span>
+            <span className="font-mono text-lg font-bold">{formatWithSuperscript(text)}</span>
         </div>
     );
 };
@@ -319,9 +321,11 @@ export function AlgebraArena() {
                             const variables = selectedTerms[0].variables;
                             const newText = (coeff: number, vars: string) => {
                                 if (vars === 'constant') return `${coeff}`;
-                                if (coeff === 1) return vars;
-                                if (coeff === -1) return `-${vars}`;
-                                return `${coeff}${vars}`;
+                                if (coeff === 1 && vars !== '') return vars;
+                                if (coeff === -1 && vars !== '') return `-${vars}`;
+                                let text = `${coeff}`;
+                                if (vars !== 'constant') text += vars;
+                                return text;
                             }
                             
                             const newTerm: Term = {
@@ -438,13 +442,13 @@ export function AlgebraArena() {
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex(prev => prev + 1);
+      setCurrentLevelIndex(prev => prev - 1);
     }
   };
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
-  const formattedExpression = currentExpression.replace(/([a-zA-Z])\*([a-zA-Z])/g, '$1²').replace(/\*/g, '');
+  const formattedExpression = formatWithSuperscript(currentExpression);
 
   return (
     <DndProvider backend={DndBackend}>
@@ -555,5 +559,3 @@ export function AlgebraArena() {
     </DndProvider>
   );
 }
-
-    
