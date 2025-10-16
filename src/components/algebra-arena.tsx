@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, RotateCw, ArrowRight, ChevronLeft, ChevronRight, Puzzle } from 'lucide-react';
+import { CheckCircle2, RotateCw, ArrowRight, ChevronLeft, ChevronRight, Puzzle, Lightbulb } from 'lucide-react';
 import { produce } from 'immer';
 
 const ItemTypes = {
@@ -38,7 +38,7 @@ const factorableSolutions: Record<string, { solutions: string[][], blocks: strin
 
 const isFactorable = (expr: string) => Object.keys(factorableSolutions).includes(expr);
 
-const formatWithSuperscript = (expr: string) => expr.replace(/([a-zA-Z])\*([a-zA-Z])/g, '$1²').replace(/\*/g, '');
+const formatWithSuperscript = (expr: string) => expr.replace(/([a-zA-Z])\*([a-zA-Z])/g, '$1²').replace(/\*/g, '').replace(/([a-zA-Z])\^2/g, '$1²');
 
 interface Term {
   id: string;
@@ -171,7 +171,6 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
   );
 };
 
-// FACTORING GAME COMPONENTS
 const FactorBlock = ({ text, isPlaced }: { text: string, isPlaced?: boolean }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
         type: ItemTypes.FACTOR_BLOCK,
@@ -210,9 +209,9 @@ const FactorSlot = ({ onDrop, placedBlock, onRemove }: { onDrop: (item: { text: 
             ref={drop}
             onClick={onRemove}
             className={cn(
-                'w-32 h-16 rounded-lg border-2 border-dashed flex items-center justify-center transition-all',
+                'h-16 rounded-lg border-2 border-dashed flex items-center justify-center transition-all',
                 isOver ? 'bg-primary/20 border-primary' : 'bg-muted/50',
-                placedBlock && 'border-solid p-0'
+                placedBlock ? 'border-solid p-0 w-auto' : 'w-32'
             )}
         >
             {placedBlock ? <FactorBlock text={placedBlock} isPlaced /> : <span className="text-muted-foreground">Drop</span>}
@@ -220,8 +219,14 @@ const FactorSlot = ({ onDrop, placedBlock, onRemove }: { onDrop: (item: { text: 
     );
 };
 
+interface AlgebraArenaProps {
+    score: number;
+    onScoreChange: (newScore: number) => void;
+    onGameComplete: () => void;
+}
 
-export function AlgebraArena() {
+
+export function AlgebraArena({ score, onScoreChange, onGameComplete }: AlgebraArenaProps) {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [unplacedTerms, setUnplacedTerms] = useState<Term[]>([]);
   const [zones, setZones] = useState<Record<string, Term[]>>({});
@@ -230,7 +235,6 @@ export function AlgebraArena() {
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [selectedInZoneIds, setSelectedInZoneIds] = useState<string[]>([]);
   
-  // State for factoring game
   const [factorBlocks, setFactorBlocks] = useState<string[]>([]);
   const [factorSlots, setFactorSlots] = useState<Array<string | null>>([]);
   
@@ -320,17 +324,35 @@ export function AlgebraArena() {
                         if (newCoefficient !== 0) {
                             const variables = selectedTerms[0].variables;
                             const newText = (coeff: number, vars: string) => {
+                                let text = '';
+                                if (coeff > 0) text += '+';
+                                
                                 if (vars === 'constant') return `${coeff}`;
-                                if (coeff === 1 && vars !== '') return vars;
+                                if (coeff === 1 && vars !== '') return `+${vars}`;
                                 if (coeff === -1 && vars !== '') return `-${vars}`;
-                                let text = `${coeff}`;
+                                
+                                text += `${coeff}`;
                                 if (vars !== 'constant') text += vars;
                                 return text;
                             }
                             
+                             const finalCoefficientText = (coeff: number, vars: string): string => {
+                                const sign = coeff > 0 ? '+' : '-';
+                                const absCoeff = Math.abs(coeff);
+                                
+                                if (vars === 'constant') return `${coeff}`;
+                                
+                                let cText = '';
+                                if (absCoeff !== 1) {
+                                    cText = String(absCoeff);
+                                }
+                                
+                                return `${sign}${cText}${vars}`;
+                            }
+                            
                             const newTerm: Term = {
                                 id: `term-${termIdCounter++}`,
-                                text: newText(newCoefficient, variables),
+                                text: finalCoefficientText(newCoefficient, variables),
                                 coefficient: newCoefficient,
                                 variables: variables,
                                 isNew: true,
@@ -367,6 +389,15 @@ export function AlgebraArena() {
     
     const handleDropFactor = (index: number, item: { text: string }) => {
         setFactorSlots(produce(draft => {
+            // Prevent dropping if the slot is already filled
+            if (draft[index] !== null) return;
+            
+            // If the item is already in another slot, remove it from there first
+            const existingIndex = draft.indexOf(item.text);
+            if (existingIndex !== -1) {
+                draft[existingIndex] = null;
+            }
+
             draft[index] = item.text;
         }));
         setFactorBlocks(prev => prev.filter(b => b !== item.text));
@@ -378,7 +409,7 @@ export function AlgebraArena() {
             setFactorSlots(produce(draft => {
                 draft[index] = null;
             }));
-            setFactorBlocks(prev => [...prev, removedBlock]);
+            setFactorBlocks(prev => [...prev, removedBlock].sort(() => Math.random() - 0.5));
         }
     };
   
@@ -395,9 +426,12 @@ export function AlgebraArena() {
 
         if (isCorrect) {
             toast({ title: 'Correct!', description: 'Expression factored successfully!' });
+            onScoreChange(score + 25);
             setIsLevelSolved(true);
+            if (currentLevelIndex === levels.length - 1) onGameComplete();
         } else {
             toast({ variant: 'destructive', title: 'Not quite!', description: "That's not the correct factorization. Try again!" });
+            onScoreChange(Math.max(0, score - 10));
         }
         return;
     }
@@ -411,8 +445,8 @@ export function AlgebraArena() {
         .flat()
         .sort((a, b) => a.variables.localeCompare(b.variables))
         .map((t, index) => {
-            let text = t.text;
-            if (t.coefficient > 0 && index > 0 && !text.startsWith('+')) {
+            let text = t.text.startsWith('+') ? t.text.substring(1) : t.text;
+            if (t.coefficient > 0 && index > 0) {
                 text = `+${text}`;
             }
             return text;
@@ -420,19 +454,45 @@ export function AlgebraArena() {
         .join('')
         .replace(/^\+/, '');
 
-    const normalize = (str: string) => str.replace(/\s/g, '').split(/(?=[+-])/).filter(Boolean).sort().join('');
+    const normalize = (str: string) => str.replace(/\s/g, '').replace(/\*g/, '').split(/(?=[+-])/).filter(Boolean).sort().join('');
 
     if (normalize(userAnswer) === normalize(finalSimplifiedExpression)) {
         toast({ title: 'Correct!', description: 'Expression simplified successfully!' });
+        onScoreChange(score + 15);
         setIsLevelSolved(true);
+        if (currentLevelIndex === levels.length - 1) onGameComplete();
     } else {
-        toast({ variant: 'destructive', title: 'Not quite!', description: "That answer is incorrect. Try again!" });
+        toast({ variant: 'destructive', title: 'Not quite!', description: "That answer is incorrect. Check your simplifications and try again." });
+        onScoreChange(Math.max(0, score - 10));
     }
   };
 
   const resetLevel = () => {
     setupLevel(currentLevelIndex);
+    onScoreChange(Math.max(0, score - 5));
+    toast({ variant: 'destructive', title: 'Reset Penalty', description: '-5 points for resetting.' });
   }
+  
+    const handleHint = () => {
+        if (!isFactoringLevel) return;
+
+        const solution = factorableSolutions[currentExpression].solutions[0];
+        const placedFactors = factorSlots.filter(s => s !== null);
+        const unrevealedFactor = solution.find(f => !placedFactors.includes(f));
+
+        if (unrevealedFactor) {
+            toast({
+                title: 'Hint Used!',
+                description: `One of the factors is: ${formatWithSuperscript(unrevealedFactor)}`,
+            });
+            onScoreChange(Math.max(0, score - 15));
+        } else {
+            toast({
+                title: 'No more hints!',
+                description: "You've already found all the factors!",
+            });
+        }
+    };
   
   const goToNextLevel = () => {
     if (currentLevelIndex < levels.length - 1) {
@@ -469,9 +529,16 @@ export function AlgebraArena() {
                             <ChevronRight />
                         </Button>
                     </div>
-                    <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border">
-                        <RotateCw />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {isFactoringLevel && (
+                            <Button onClick={handleHint} variant="outline" size="icon" aria-label="Get a hint" disabled={isLevelSolved}>
+                                <Lightbulb />
+                            </Button>
+                        )}
+                        <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border" disabled={isLevelSolved}>
+                            <RotateCw />
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-6 space-y-8">
@@ -527,7 +594,7 @@ export function AlgebraArena() {
                  {allLevelsComplete && (
                     <div className="text-center">
                         <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                        <h2 className="text-3xl font-bold font-headline">All Levels Complete!</h2>
+                        <h2 className="text-3xl font-bold font-headline">Algebra Master!</h2>
                         <p className="text-muted-foreground">Great job simplifying and factoring!</p>
                     </div>
                 )}

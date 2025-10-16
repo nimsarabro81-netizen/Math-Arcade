@@ -31,6 +31,36 @@
         "lastUpdated"
       ]
     },
+    "AlgebraRank": {
+      "title": "AlgebraRank",
+      "type": "object",
+      "description": "Stores user ranking information for the Algebra Arena game.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's display name, 'Anonymous' for anonymous users."
+        },
+        "score": {
+          "type": "number",
+          "description": "The user's score in the Algebra Arena game."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "description": "Timestamp of the last time the user's score/rank was updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "username",
+        "score",
+        "lastUpdated"
+      ]
+    },
     "User": {
       "title": "User",
       "type": "object",
@@ -58,7 +88,14 @@
             "schema": {
                 "$ref": "#/entities/UserRank"
             },
-            "description": "Stores rankings for all users."
+            "description": "Stores rankings for all users for the VectorZen game."
+        },
+        {
+            "path": "/algebraRanks",
+            "schema": {
+                "$ref": "#/entities/AlgebraRank"
+            },
+            "description": "Stores rankings for all users for the Algebra Arena game."
         }
       ]
   }

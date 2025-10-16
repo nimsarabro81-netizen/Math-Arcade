@@ -208,7 +208,7 @@ export default function Home() {
                 </CardContent>
              </Card>
             <div className="mt-8">
-                <Ranking />
+                <Ranking collectionName="userRanks" title="VectorZen Leaderboard" />
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from 'react';
@@ -14,13 +15,18 @@ type UserRank = {
   score: number;
 };
 
-export function Ranking() {
+interface RankingProps {
+    collectionName?: string;
+    title?: string;
+}
+
+export function Ranking({ collectionName = 'userRanks', title = 'Leaderboard' }: RankingProps) {
   const { firestore } = useFirebase();
 
   const userRanksQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'userRanks'), orderBy('score', 'desc'), limit(10));
-  }, [firestore]);
+    return query(collection(firestore, collectionName), orderBy('score', 'desc'), limit(10));
+  }, [firestore, collectionName]);
 
   const { data: rankings, isLoading } = useCollection<UserRank>(userRanksQuery);
 
@@ -41,7 +47,7 @@ export function Ranking() {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="text-center font-headline text-3xl font-bold">
-          Leaderboard
+          {title}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -10,8 +11,12 @@ import { useFirebase } from '@/firebase';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
+interface AdminControlsProps {
+    collectionName: string;
+    leaderboardName: string;
+}
 
-export function AdminControls() {
+export function AdminControls({ collectionName, leaderboardName }: AdminControlsProps) {
     const { firestore } = useFirebase();
     const { toast } = useToast();
     const [isClearing, setIsClearing] = useState(false);
@@ -28,10 +33,10 @@ export function AdminControls() {
 
         setIsClearing(true);
 
-        const userRanksRef = collection(firestore, 'userRanks');
-        const querySnapshot = await getDocs(userRanksRef).catch(error => {
+        const ranksRef = collection(firestore, collectionName);
+        const querySnapshot = await getDocs(ranksRef).catch(error => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: userRanksRef.path,
+                path: ranksRef.path,
                 operation: 'list',
             }));
             return null;
@@ -44,7 +49,7 @@ export function AdminControls() {
 
         if (querySnapshot.empty) {
             toast({
-                title: 'Leaderboard is already empty.',
+                title: `${leaderboardName} is already empty.`,
             });
             setIsClearing(false);
             return;
@@ -59,7 +64,7 @@ export function AdminControls() {
             .then(() => {
                 toast({
                     title: 'Success!',
-                    description: 'The leaderboard has been cleared.',
+                    description: `The ${leaderboardName} has been cleared.`,
                 });
             })
             .catch((error) => {
@@ -72,6 +77,8 @@ export function AdminControls() {
             })
             .finally(() => {
                 setIsClearing(false);
+                // We might need a way to force-refresh the leaderboards
+                window.location.reload(); 
             });
     };
     
@@ -82,8 +89,8 @@ export function AdminControls() {
     return (
         <Card className="shadow-lg">
             <CardHeader>
-                <CardTitle>Admin Actions</CardTitle>
-                <CardDescription>Use these controls to manage the leaderboard.</CardDescription>
+                <CardTitle>{leaderboardName} Actions</CardTitle>
+                <CardDescription>Use these controls to manage the {leaderboardName}.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button onClick={handleRefresh}>
@@ -100,7 +107,7 @@ export function AdminControls() {
                         <AlertDialogHeader>
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete all scores from the leaderboard.
+                                This action cannot be undone. This will permanently delete all scores from the {leaderboardName}.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
