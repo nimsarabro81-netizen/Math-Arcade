@@ -1,6 +1,7 @@
 
 import { Ranking } from '@/components/ranking';
 import { AdminControls } from '@/components/admin-controls';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminPage() {
   return (
@@ -11,23 +12,27 @@ export default function AdminPage() {
             Admin Panel
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Manage the VectorZen game leaderboards.
+            Manage the game leaderboards.
           </p>
         </header>
-        <div className="space-y-12">
-            <section>
-                <AdminControls collectionName="userRanks" leaderboardName="VectorZen Leaderboard" />
-                <div className="mt-4">
-                    <Ranking collectionName="userRanks" title="VectorZen Leaderboard" />
-                </div>
+        <Tabs defaultValue="vectorzen" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="vectorzen">VectorZen Leaderboard</TabsTrigger>
+            <TabsTrigger value="algebra">Algebra Arena Leaderboard</TabsTrigger>
+          </TabsList>
+          <TabsContent value="vectorzen">
+            <section className="mt-6 space-y-4">
+              <AdminControls collectionName="userRanks" leaderboardName="VectorZen Leaderboard" />
+              <Ranking collectionName="userRanks" title="VectorZen Leaderboard" />
             </section>
-            <section>
-                <AdminControls collectionName="algebraRanks" leaderboardName="Algebra Arena Leaderboard" />
-                 <div className="mt-4">
-                    <Ranking collectionName="algebraRanks" title="Algebra Arena Leaderboard" />
-                </div>
+          </TabsContent>
+          <TabsContent value="algebra">
+            <section className="mt-6 space-y-4">
+              <AdminControls collectionName="algebraRanks" leaderboardName="Algebra Arena Leaderboard" />
+              <Ranking collectionName="algebraRanks" title="Algebra Arena Leaderboard" />
             </section>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
