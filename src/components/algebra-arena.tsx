@@ -11,18 +11,29 @@ import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/componen
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, RotateCw, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, RotateCw, ArrowRight, ChevronLeft, ChevronRight, Puzzle } from 'lucide-react';
 import { produce } from 'immer';
 
 const ItemTypes = {
   TOKEN: 'token',
+  FACTOR_BLOCK: 'factor_block',
 };
 
-const levels = ["3x+5x-x", "2x-3y+5x+6y", "5*a*a-45", "x*x+5*x+6", "3*x*x+18*x*y-6*y"];
-const factorableSolutions: Record<string, string[]> = {
-    "5*a*a-45": ["5(a-3)(a+3)", "5(a+3)(a-3)"],
-    "x*x+5*x+6": ["(x+2)(x+3)", "(x+3)(x+2)"],
-    "3*x*x+18*x*y-6*y": ["3(x*x+6xy-2y)"], // Example, might need more robust logic
+const levels = ["3x+5x-x", "2x-3y+5x+6y", "x*x+5*x+6", "5*a*a-45", "3*x*x+18*x*y-6*y"];
+
+const factorableSolutions: Record<string, { solutions: string[][], blocks: string[] }> = {
+    "x*x+5*x+6": {
+        solutions: [["(x+2)", "(x+3)"], ["(x+3)", "(x+2)"]],
+        blocks: ["(x+2)", "(x+3)", "(x+1)", "(x+6)", "(x-2)", "(x-3)"]
+    },
+    "5*a*a-45": {
+        solutions: [["5", "(a-3)", "(a+3)"], ["5", "(a+3)", "(a-3)"]],
+        blocks: ["5", "(a-3)", "(a+3)", "a", "(a-9)", "(a+5)"]
+    },
+    "3*x*x+18*x*y-6*y": {
+        solutions: [["3", "(x*x+6xy-2y)"]],
+        blocks: ["3", "x", "y", "(x*x+6xy-2y)", "6", "(xy-y)"]
+    },
 };
 
 const isFactorable = (expr: string) => Object.keys(factorableSolutions).includes(expr);
@@ -40,33 +51,25 @@ let termIdCounter = 0;
 
 const parseExpression = (expr: string): Term[] => {
     let idCounter = 0;
-
-    // First, handle multiplications like x*x -> x^2 or a*b -> ab
     const simplifiedExpr = expr
         .replace(/\s/g, '')
         .replace(/([a-zA-Z])\*([a-zA-Z])/g, (_, v1, v2) => {
              if (v1 === v2) return `${v1}^2`;
              return [v1, v2].sort().join('');
         })
-        .replace(/\*([a-zA-Z])/g, '$1') // Clean up remaining multiplications like 5*x -> 5x
-        .replace(/([+-])/g, ' $1') // Add space before operators to split correctly
+        .replace(/\*([a-zA-Z])/g, '$1')
+        .replace(/([+-])/g, ' $1')
         .trim();
     
-    const rawTerms = simplifiedExpr.split(' ');
+    const rawTerms = simplifiedExpr.split(' ').filter(Boolean);
 
-    return rawTerms.map(termStr => {
-        if (!termStr) return null;
-        
-        // Regex to handle terms like: +5x, -3y, x^2, -a^2, 18xy, -45
+    return rawTerms.map((termStr, index) => {
         const match = termStr.match(/([+-]?)(\d*(?:\.\d+)?)((?:[a-zA-Z]\^?\d*)+|[a-zA-Z]+)?/);
         if (!match) return null;
 
-        let signText = match[1];
-        let coeffText = match[2];
-        let varText = match[3] || '';
+        let [, signText, coeffText, varText = ''] = match;
 
-        // If it's not the first term and has no explicit sign, it's positive.
-        if (!signText && rawTerms.indexOf(termStr) > 0) {
+        if (!signText && index > 0) {
            signText = '+';
         }
 
@@ -77,27 +80,24 @@ const parseExpression = (expr: string): Term[] => {
             coeff = 1;
         } else if (coeffText !== '') {
             coeff = parseFloat(coeffText);
-        } else if (coeffText === '' && varText === '') { // Just a number
-            const numMatch = termStr.match(/[+-]?\d+/);
-            if (numMatch) {
-                return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
-            }
-            return null;
         } else {
-            return null; // Should not happen with the improved regex
+             const numMatch = termStr.match(/[+-]?\d+/);
+             if (numMatch) {
+                 return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
+             }
+             return null;
         }
         
-        const sortedVars = varText.split('').sort().join('') || 'constant';
+        const sortedVars = varText.replace(/\^2/g, (c) => c.repeat(2)).split('').sort().join('').replace(/([a-zA-Z])\1/g, '$1^2') || 'constant';
         
         let termWithSign = termStr;
-        if (sign > 0 && !termWithSign.startsWith('+') && rawTerms.indexOf(termStr) > 0) {
+        if (sign > 0 && !termWithSign.startsWith('+') && index > 0) {
             termWithSign = `+${termWithSign}`;
         }
         
         return { id: `term-${termIdCounter++}`, text: termWithSign, coefficient: sign * coeff, variables: sortedVars };
     }).filter((t): t is Term => t !== null && t.coefficient !== 0);
 };
-
 
 const TermToken = ({ term, onClick, isSelected, isPlaced, isNew, isPaired }: { term: Term; onClick?: () => void; isSelected?: boolean; isPlaced?: boolean; isNew?: boolean, isPaired?: boolean }) => {  
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -169,6 +169,55 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
   );
 };
 
+// FACTORING GAME COMPONENTS
+const FactorBlock = ({ text, isPlaced }: { text: string, isPlaced?: boolean }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+        type: ItemTypes.FACTOR_BLOCK,
+        item: { text },
+        canDrag: !isPlaced,
+        collect: (monitor) => ({
+            isDragging: !!monitor.isDragging(),
+        }),
+    }));
+
+    return (
+        <div
+            ref={drag}
+            className={cn(
+                'p-2 px-4 rounded-lg border bg-card shadow-md cursor-grab transition-all',
+                isDragging && 'opacity-50 scale-110',
+                isPlaced && 'cursor-default bg-primary/10'
+            )}
+        >
+            <span className="font-mono text-lg font-bold">{text}</span>
+        </div>
+    );
+};
+
+const FactorSlot = ({ onDrop, placedBlock, onRemove }: { onDrop: (item: { text: string }) => void, placedBlock: string | null, onRemove: () => void }) => {
+    const [{ isOver }, drop] = useDrop(() => ({
+        accept: ItemTypes.FACTOR_BLOCK,
+        drop: onDrop,
+        collect: (monitor) => ({
+            isOver: !!monitor.isOver(),
+        }),
+    }));
+
+    return (
+        <div
+            ref={drop}
+            onClick={onRemove}
+            className={cn(
+                'w-32 h-16 rounded-lg border-2 border-dashed flex items-center justify-center transition-all',
+                isOver ? 'bg-primary/20 border-primary' : 'bg-muted/50',
+                placedBlock && 'border-solid p-0'
+            )}
+        >
+            {placedBlock ? <FactorBlock text={placedBlock} isPlaced /> : <span className="text-muted-foreground">Drop</span>}
+        </div>
+    );
+};
+
 
 export function AlgebraArena() {
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
@@ -178,6 +227,10 @@ export function AlgebraArena() {
   const [userAnswer, setUserAnswer] = useState('');
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [selectedInZoneIds, setSelectedInZoneIds] = useState<string[]>([]);
+  
+  // State for factoring game
+  const [factorBlocks, setFactorBlocks] = useState<string[]>([]);
+  const [factorSlots, setFactorSlots] = useState<Array<string | null>>([]);
   
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -191,21 +244,22 @@ export function AlgebraArena() {
     const expression = levels[levelIndex];
     
     if (isFactorable(expression)) {
+        const levelData = factorableSolutions[expression];
+        setFactorBlocks(levelData.blocks.sort(() => Math.random() - 0.5));
+        setFactorSlots(Array(levelData.solutions[0].length).fill(null));
         setUnplacedTerms([]);
         setZones({});
         setVariableTypes([]);
     } else {
         const parsedTerms = parseExpression(expression);
         setUnplacedTerms(parsedTerms);
-
         const types = [...new Set(parsedTerms.map(t => t.variables))];
         setVariableTypes(types);
-        
         const newZones: Record<string, Term[]> = {};
-        types.forEach(type => {
-            newZones[type] = [];
-        })
+        types.forEach(type => { newZones[type] = []; })
         setZones(newZones);
+        setFactorBlocks([]);
+        setFactorSlots([]);
     }
 
     setUserAnswer('');
@@ -233,7 +287,6 @@ export function AlgebraArena() {
         let zoneKey: string | null = null;
         let selectedTerms: Term[] = [];
 
-        // Find which zone the selected terms are in
         for (const key in zones) {
             const termsInZone = zones[key];
             const foundTerms = termsInZone.filter(t => selectedInZoneIds.includes(t.id));
@@ -245,43 +298,35 @@ export function AlgebraArena() {
         }
         
         if (zoneKey && selectedTerms.length === 2) {
-            // Set 'isPaired' for animation
             setZones(
                 produce(draft => {
                     for (const term of selectedTerms) {
                         const termInZone = draft[zoneKey!].find(t => t.id === term.id);
-                        if (termInZone) {
-                            termInZone.isPaired = true;
-                        }
+                        if (termInZone) termInZone.isPaired = true;
                     }
                 })
             );
 
-            // After animation, update the state
             setTimeout(() => {
                 const newCoefficient = selectedTerms.reduce((sum, t) => sum + t.coefficient, 0);
                 
                 setZones(
                     produce(draft => {
                         const currentZone = draft[zoneKey!];
-                        // Remove the two old terms
                         draft[zoneKey!] = currentZone.filter(t => !selectedInZoneIds.includes(t.id));
 
                         if (newCoefficient !== 0) {
                             const variables = selectedTerms[0].variables;
-                            let newText: string;
-
-                            if (variables === 'constant') {
-                                newText = `${newCoefficient}`;
-                            } else {
-                                if (newCoefficient === 1) newText = variables;
-                                else if (newCoefficient === -1) newText = `-${variables}`;
-                                else newText = `${newCoefficient}${variables}`;
+                            const newText = (coeff: number, vars: string) => {
+                                if (vars === 'constant') return `${coeff}`;
+                                if (coeff === 1) return vars;
+                                if (coeff === -1) return `-${vars}`;
+                                return `${coeff}${vars}`;
                             }
                             
                             const newTerm: Term = {
                                 id: `term-${termIdCounter++}`,
-                                text: newText,
+                                text: newText(newCoefficient, variables),
                                 coefficient: newCoefficient,
                                 variables: variables,
                                 isNew: true,
@@ -290,22 +335,15 @@ export function AlgebraArena() {
                         }
                     })
                 );
-
                 setSelectedInZoneIds([]);
-
-                // Reset the 'isNew' flag after the pop animation
                 setTimeout(() => {
                      setZones(produce(draft => {
                         const zone = draft[zoneKey!];
-                        if (zone) {
-                            zone.forEach(t => { t.isNew = false; });
-                        }
+                        if (zone) zone.forEach(t => { t.isNew = false; });
                     }));
                 }, 500);
-
             }, 500);
         } else {
-            // Deselect if not a valid pair (e.g. from different zones)
             setTimeout(() => setSelectedInZoneIds([]), 500);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -313,27 +351,45 @@ export function AlgebraArena() {
 
     const handleTermClickInZone = (term: Term) => {
         if (isLevelSolved || term.isPaired) return;
-        
         setSelectedInZoneIds(prev => {
-            if (prev.includes(term.id)) {
-                return prev.filter(id => id !== term.id);
-            }
+            if (prev.includes(term.id)) return prev.filter(id => id !== term.id);
             if(prev.length < 2) {
                 const firstSelectedTerm = zones[term.variables]?.find(t => t.id === prev[0]);
-                if (prev.length === 0 || firstSelectedTerm) {
-                    return [...prev, term.id];
-                }
+                if (prev.length === 0 || firstSelectedTerm) return [...prev, term.id];
             }
             return prev;
         });
+    };
+    
+    const handleDropFactor = (index: number, item: { text: string }) => {
+        setFactorSlots(produce(draft => {
+            draft[index] = item.text;
+        }));
+        setFactorBlocks(prev => prev.filter(b => b !== item.text));
+    };
+
+    const handleRemoveFactor = (index: number) => {
+        const removedBlock = factorSlots[index];
+        if (removedBlock) {
+            setFactorSlots(produce(draft => {
+                draft[index] = null;
+            }));
+            setFactorBlocks(prev => [...prev, removedBlock]);
+        }
     };
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if(isFactoringLevel) {
-        const possibleSolutions = factorableSolutions[currentExpression];
-        if (possibleSolutions && possibleSolutions.includes(userAnswer.replace(/\s/g, ''))) {
+        const possibleSolutions = factorableSolutions[currentExpression].solutions;
+        const userSolution = factorSlots.filter((s): s is string => s !== null);
+
+        const isCorrect = possibleSolutions.some(sol => 
+            JSON.stringify(sol.sort()) === JSON.stringify(userSolution.sort())
+        );
+
+        if (isCorrect) {
             toast({ title: 'Correct!', description: 'Expression factored successfully!' });
             setIsLevelSolved(true);
         } else {
@@ -346,29 +402,21 @@ export function AlgebraArena() {
         toast({ variant: 'destructive', title: 'Not so fast!', description: 'You must place all the terms first.' });
         return;
     }
-
-    const simplified = Object.values(zones).flat().sort((a, b) => a.variables.localeCompare(b.variables)).map(term => {
-        if(term.coefficient > 0 && Object.values(zones).flat().indexOf(term) > 0) {
-            return `+${term.text}`;
-        }
-        return term.text;
-    }).join('').replace(/^\+/, '');
-    
-    const normalize = (str: string) => str.replace(/\s/g, '').split(/(?=[+-])/).filter(Boolean).sort().join('');
     
     const finalSimplifiedExpression = Object.values(zones)
         .flat()
-        .map(t => {
-            const num = t.coefficient;
-            const vars = t.variables;
-            if (vars === 'constant') return num > 0 ? `+${num}` : `${num}`;
-            if (num === 1) return `+${vars}`;
-            if (num === -1) return `-${vars}`;
-            return num > 0 ? `+${num}${vars}` : `${num}${vars}`;
+        .sort((a, b) => a.variables.localeCompare(b.variables))
+        .map((t, index) => {
+            let text = t.text;
+            if (t.coefficient > 0 && index > 0 && !text.startsWith('+')) {
+                text = `+${text}`;
+            }
+            return text;
         })
         .join('')
         .replace(/^\+/, '');
 
+    const normalize = (str: string) => str.replace(/\s/g, '').split(/(?=[+-])/).filter(Boolean).sort().join('');
 
     if (normalize(userAnswer) === normalize(finalSimplifiedExpression)) {
         toast({ title: 'Correct!', description: 'Expression simplified successfully!' });
@@ -390,14 +438,11 @@ export function AlgebraArena() {
 
   const goToPrevLevel = () => {
     if (currentLevelIndex > 0) {
-      setCurrentLevelIndex(prev => prev - 1);
+      setCurrentLevelIndex(prev => prev + 1);
     }
   };
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
-
-  const placeholderText = isFactoringLevel ? "e.g. (x+2)(x+3)" : "Final Simplified Expression";
-
 
   return (
     <DndProvider backend={DndBackend}>
@@ -425,19 +470,30 @@ export function AlgebraArena() {
             </CardHeader>
             <CardContent className="p-6 space-y-8">
                  {isFactoringLevel ? (
-                    <div className="min-h-[250px] flex flex-col items-center justify-center">
-                        <h2 className="text-2xl font-bold font-headline mb-4">Factor the Expression</h2>
-                        <p className="text-muted-foreground">Enter the factored form of the expression above.</p>
+                    <div className="min-h-[250px] flex flex-col items-center justify-start space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-bold font-headline mb-2 text-center">Factor Slots</h2>
+                            <p className="text-muted-foreground text-center mb-4">Drag the correct factors from the bank below into these slots.</p>
+                            <div className="flex flex-wrap gap-4 items-center justify-center">
+                                {factorSlots.map((block, index) => (
+                                    <FactorSlot key={index} onDrop={(item) => handleDropFactor(index, item)} placedBlock={block} onRemove={() => handleRemoveFactor(index)} />
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-bold font-headline mb-2 text-center">Factor Bank</h3>
+                             <div className="min-h-[80px] bg-grid rounded-lg p-4 flex flex-wrap gap-4 items-center justify-center border">
+                                {factorBlocks.map(block => <FactorBlock key={block} text={block} />)}
+                                {factorBlocks.length === 0 && <p className="text-muted-foreground">All blocks placed!</p>}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <>
-                        {/* Unplaced Terms Area */}
                         <div className="min-h-[80px] bg-grid rounded-lg p-4 flex flex-wrap gap-4 items-center justify-center">
                             {unplacedTerms.map(term => <TermToken key={term.id} term={term} />)}
                             {unplacedTerms.length === 0 && <p className="text-muted-foreground">Drop terms into the zones below!</p>}
                         </div>
-                        
-                        {/* Combining Zones */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {variableTypes.map(type => (
                                 <CombiningZone 
@@ -472,17 +528,25 @@ export function AlgebraArena() {
             </CardContent>
              <CardFooter className="flex justify-center items-center text-center bg-muted/30 p-4 border-t">
                 <form onSubmit={handleSubmit} className="flex w-full max-w-md items-center space-x-2">
-                    <Input
-                        type="text"
-                        placeholder={placeholderText}
-                        value={userAnswer}
-                        onChange={(e) => setUserAnswer(e.target.value)}
-                        disabled={isLevelSolved}
-                        className="text-center text-lg h-12"
-                    />
-                    <Button type="submit" className="h-12" disabled={isLevelSolved}>
-                        Submit
-                    </Button>
+                   {isFactoringLevel ? (
+                        <Button type="submit" className="h-12 w-full" disabled={isLevelSolved}>
+                            <Puzzle className="mr-2" /> Check Factors
+                        </Button>
+                   ) : (
+                    <>
+                        <Input
+                            type="text"
+                            placeholder="Final Simplified Expression"
+                            value={userAnswer}
+                            onChange={(e) => setUserAnswer(e.target.value)}
+                            disabled={isLevelSolved}
+                            className="text-center text-lg h-12"
+                        />
+                        <Button type="submit" className="h-12" disabled={isLevelSolved}>
+                            Submit
+                        </Button>
+                    </>
+                   )}
                 </form>
             </CardFooter>
         </Card>
