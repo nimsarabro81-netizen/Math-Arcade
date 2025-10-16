@@ -444,6 +444,8 @@ export function AlgebraArena() {
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
 
+  const formattedExpression = currentExpression.replace(/([a-zA-Z])\*([a-zA-Z])/g, '$1²').replace(/\*/g, '');
+
   return (
     <DndProvider backend={DndBackend}>
         <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
@@ -457,7 +459,7 @@ export function AlgebraArena() {
                             <p className="text-sm font-medium text-muted-foreground">
                                 Level {currentLevelIndex + 1}: {isFactoringLevel ? 'Factor the Expression' : 'Simplify the Expression'}
                             </p>
-                            <p className="font-mono text-xl sm:text-2xl font-bold">{currentExpression}</p>
+                            <p className="font-mono text-xl sm:text-2xl font-bold">{formattedExpression}</p>
                         </div>
                         <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
                             <ChevronRight />
