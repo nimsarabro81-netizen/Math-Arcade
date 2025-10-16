@@ -1,21 +1,39 @@
-
+/**
+ * @fileoverview Firestore Security Rules for VectorZen app.
+ *
+ * Core Philosophy:
+ * This ruleset provides open read access (get, list) to the `userRanks` collection. Only authenticated users are allowed to delete documents in `userRanks` collection.
+ *
+ * Data Structure:
+ * - /userRanks/{userRankId}: Contains user ranking data.
+ *
+ * Key Security Decisions:
+ * - Open read access to user rankings is granted.
+ * - Only authenticated users can delete records.
+ * - The exact shape of the data in `userRanks` collection is not validated.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // By default, deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    /**
+     * @description Grants open read access, and allows only authenticated users to delete documents.
+     * @path /userRanks/{userRankId}
+     * @allow (get, list): Always allowed for any user.
+     * @allow (delete): Allowed for authenticated users (any user).
+     * @deny (create, update): Always denied.
+     * @principle Public read, authenticated delete access.
+     */
+    match /userRanks/{userRankId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if isSignedIn();
     }
 
-    // Allow public read access to the user ranks for the leaderboard
-    match /userRanks/{userRankId} {
-      allow read: if true;
-      // Allow users to create their own rank entry, but not edit others'
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      // Users should not be able to update or delete ranks directly
-      allow update, delete: if false;
+    // Define helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
