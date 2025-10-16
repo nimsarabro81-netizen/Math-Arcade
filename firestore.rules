@@ -1,55 +1,74 @@
 /**
- * @file Firestore Security Rules for VectorZen app.
+ * @fileoverview Firestore Security Rules for VectorZen and associated games.
  *
- * @core_philosophy This ruleset allows public read access to all ranking data, but restricts write access.
- * This approach prioritizes allowing application users to view the rankings, while unauthorized edits are disallowed.
+ * Core Philosophy:
+ * This ruleset allows any authenticated user (anonymous included) to create their ranking.
  *
- * @data_structure The data is organized into three top-level collections: `/userRanks`, `/algebraRanks`, and `/equationRanks`.
- *  Each collection stores user ranking data for a specific game.
+ * Data Structure:
+ * The database stores user ranking data for multiple games in top-level collections:
+ *   - /userRanks: Rankings for VectorZen
+ *   - /algebraRanks: Rankings for Algebra Arena
+ *   - /equationRanks: Rankings for Equation Equilibrium
  *
- * @key_security_decisions
- *   - Public read access is granted to all ranking collections.
- *   - All write access is denied.
- *   - Listing is allowed, given this is a score ranking use case.
+ * Key Security Decisions:
+ * - Any authenticated user can create a rank (needed for anonymous users)
+ * - All collections are publicly readable to faciliate displaying the leaderboards
+ * - The userId property on the documents must match the authenticated user's id.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to the `/userRanks` collection, but denies all write access.
-     * @path /databases/{database}/documents/userRanks
-     * @allow (get, list) Any user can read the documents in this collection.
-     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
-     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
+     * @description Allows any authenticated user to read and write user ranks for the VectorZen game.
+     * @path /userRanks
+     * @allow (get, list): Any user can view the leaderboard.
+     * @allow (create): Any authenticated user can create their own ranking.
+     * @deny (create): Creating a rank with a mismatched userId.
+     * @allow (update, delete): Only the user who created the ranking can update or delete it.
+     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
+     * @principle Allows any authenticated user to read and write user ranks.
      */
     match /userRanks/{userRankId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
     }
 
     /**
-     * @description Allows public read access to the `/algebraRanks` collection, but denies all write access.
-     * @path /databases/{database}/documents/algebraRanks
-     * @allow (get, list) Any user can read the documents in this collection.
-     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
-     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
+     * @description Allows any authenticated user to read and write user ranks for the Algebra Arena game.
+     * @path /algebraRanks
+     * @allow (get, list): Any user can view the leaderboard.
+     * @allow (create): Any authenticated user can create their own ranking.
+     * @deny (create): Creating a rank with a mismatched userId.
+     * @allow (update, delete): Only the user who created the ranking can update or delete it.
+     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
+     * @principle Allows any authenticated user to read and write user ranks.
      */
     match /algebraRanks/{algebraRankId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
     }
 
     /**
-     * @description Allows public read access to the `/equationRanks` collection, but denies all write access.
-     * @path /databases/{database}/documents/equationRanks
-     * @allow (get, list) Any user can read the documents in this collection.
-     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
-     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
+     * @description Allows any authenticated user to read and write user ranks for the Equation Equilibrium game.
+     * @path /equationRanks
+     * @allow (get, list): Any user can view the leaderboard.
+     * @allow (create): Any authenticated user can create their own ranking.
+     * @deny (create): Creating a rank with a mismatched userId.
+     * @allow (update, delete): Only the user who created the ranking can update or delete it.
+     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
+     * @principle Allows any authenticated user to read and write user ranks.
      */
     match /equationRanks/{equationRankId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
     }
+  }
+
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
