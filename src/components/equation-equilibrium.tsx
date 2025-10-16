@@ -35,10 +35,18 @@ const parseEquation = (expr: string): Equation => {
       let t = termStr.trim();
       if (t.includes('x')) {
         if (t.includes('/')) {
-            const [numerator, denominator] = t.split('x/').map(s => s.trim());
-            const numValue = numerator === '' || numerator === '+' ? 1 : parseFloat(numerator);
-            const denValue = parseFloat(denominator);
-            x += numValue / denValue;
+            const parts = t.split('x/');
+            const numeratorStr = parts[0];
+            const denominatorStr = parts[1];
+            
+            let numerator = 1;
+            if (numeratorStr && numeratorStr !== '+') {
+                 if(numeratorStr === '-') numerator = -1;
+                 else numerator = parseFloat(numeratorStr);
+            }
+
+            const denominator = parseFloat(denominatorStr);
+            x += numerator / denominator;
         } else {
             t = t.replace('x', '');
             if (t === '' || t === '+') x += 1;
@@ -61,17 +69,17 @@ const parseEquation = (expr: string): Equation => {
 const formatTerm = (term: Term, isLeft: boolean) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        // This formatting part is tricky. For now, we'll keep it simple.
-        // A more robust solution might need a fraction library.
-        const isFraction = Math.abs(term.x) < 1 && term.x !== 0;
+        const isFraction = Math.abs(term.x) > 0 && Math.abs(term.x) < 1;
         let xStr = '';
         if (isFraction) {
-             const sign = term.x > 0 ? '' : '-';
-             if(Math.abs(term.x * 3).toFixed(2) === '2.00') {
+            const sign = term.x > 0 ? '' : '-';
+            const absX = Math.abs(term.x);
+            // This is a simplification for visualization, may need a proper fraction library for complex cases
+            if (Math.abs(absX * 3).toFixed(2) === '2.00') {
                  xStr = `${sign}2x/3`
-             } else {
-                xStr = `${sign}x/${1/Math.abs(term.x)}`;
-             }
+            } else {
+                xStr = `${sign}x/${(1/absX).toFixed(0)}`;
+            }
         }
         else {
             xStr = term.x === 1 ? 'x' : term.x === -1 ? '-x' : `${term.x}x`;
@@ -86,7 +94,7 @@ const formatTerm = (term: Term, isLeft: boolean) => {
         }
     }
     if (parts.length === 0) return '0';
-    return parts.join(' ').replace(/^\+/, '').trim();
+    return parts.join(' ').replace(/^\+ /, '').trim();
 }
 
 // --- REDUCER LOGIC ---
@@ -141,21 +149,21 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
     for (let i = 0; i < absValue; i++) {
         items.push(
             <div key={i} className={cn(
-                "flex items-center justify-center font-bold text-white rounded-md shadow-inner transition-all text-sm",
-                isX ? 'bg-blue-500 w-8 h-8' : 'bg-green-500 w-6 h-6',
-                isNegative && "bg-red-500",
+                "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-xl border-b-4",
+                isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
+                isNegative && "bg-red-500 border-red-700",
             )}>
                 {isX ? 'x' : '1'}
             </div>
         );
     }
-    return <div className="flex flex-wrap items-center justify-center gap-1 p-1">{items}</div>;
+    return <div className="flex flex-wrap items-center justify-center gap-2 p-1">{items}</div>;
 };
 
 const EquationSide = ({ term }: { term: Term }) => {
   return (
     <Card className="w-full min-h-[120px] p-2 flex flex-col justify-center items-center bg-muted/50">
-      <CardContent className="p-2 w-full">
+      <CardContent className="p-2 w-full flex-grow flex items-center justify-center">
          <div className="flex flex-col items-center gap-2">
             {term.x !== 0 && <TermBlock value={term.x} isX />}
             {term.c !== 0 && <TermBlock value={term.c} isX={false} />}
@@ -389,5 +397,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
