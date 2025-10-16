@@ -21,7 +21,13 @@ const initialEquation: Equation = {
   right: { x: 0, c: 0 },
 };
 
-const levels = ["2x-1=3", "3x+2=11", "x/2+1=3", "10-x=7", "5-2x=-1", "2x+5=x+7", "2x/3=4"];
+const levels = [
+    { equation: "2x-1=3", optimalSteps: 2 },
+    { equation: "3x+2=11", optimalSteps: 2 },
+    { equation: "x/2+1=3", optimalSteps: 2 },
+    { equation: "10-x=7", optimalSteps: 2 },
+    { equation: "5-2x=-1", optimalSteps: 2 },
+];
 
 const parseEquation = (expr: string): Equation => {
   const [leftStr, rightStr] = expr.split('=');
@@ -207,6 +213,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [initialState, setInitialState] = useState(initialEquation);
   const [equationState, dispatch] = useReducer(equationReducer, initialEquation);
+  const [operationCount, setOperationCount] = useState(0);
   
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
@@ -215,12 +222,13 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const { toast } = useToast();
   
   useEffect(() => {
-    const newInitialState = parseEquation(levels[currentLevelIndex]);
+    const newInitialState = parseEquation(levels[currentLevelIndex].equation);
     setInitialState(newInitialState);
     dispatch({ type: 'RESET', payload: newInitialState });
     setIsLevelSolved(false);
     setUserAnswer('');
     setOperationValue('');
+    setOperationCount(0);
   }, [currentLevelIndex]);
   
   const handleOperation = (op: Operation['op']) => {
@@ -240,6 +248,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     }
 
     dispatch({ type: 'APPLY_OPERATION', payload: { op, value } });
+    setOperationCount(prev => prev + 1);
     setOperationValue('');
   };
 
@@ -264,8 +273,15 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     }
 
     if (isCorrect) {
+      let finalScore = score + 25;
       toast({ title: 'Correct!', description: `x = ${finalAnswer}` });
-      onScoreChange(score + 25);
+      
+      if (operationCount <= levels[currentLevelIndex].optimalSteps) {
+          finalScore += 15;
+          toast({ title: 'Efficiency Bonus!', description: `Solved in ${operationCount} steps! +15 points.` });
+      }
+
+      onScoreChange(finalScore);
       setIsLevelSolved(true);
       if (currentLevelIndex === levels.length - 1) onGameComplete();
     } else {
@@ -279,6 +295,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setIsLevelSolved(false);
     setUserAnswer('');
     setOperationValue('');
+    setOperationCount(0);
     onScoreChange(Math.max(0, score - 5));
     toast({ variant: 'destructive', title: 'Reset Penalty', description: '-5 points for resetting.' });
   };
@@ -320,7 +337,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   };
 
   const allLevelsComplete = isLevelSolved && currentLevelIndex === levels.length - 1;
-  const currentExpression = levels[currentLevelIndex];
+  const currentExpression = levels[currentLevelIndex].equation;
 
   return (
     <Card className="w-full shadow-xl overflow-hidden border-primary/10 transition-all">
@@ -359,6 +376,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
         <Card>
             <CardHeader className="p-4">
                 <CardTitle className="text-center">Apply Operation to Both Sides</CardTitle>
+                 <CardDescription className="text-center">Steps taken: {operationCount}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col sm:flex-row items-center justify-center gap-2 p-4">
                  <Input 
@@ -413,5 +431,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
 
     
