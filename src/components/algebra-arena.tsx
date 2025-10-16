@@ -26,7 +26,10 @@ interface Term {
   coefficient: number;
   variables: string;
   isPaired?: boolean;
+  isNew?: boolean;
 }
+
+let termIdCounter = 0;
 
 const parseExpression = (expr: string): Term[] => {
     let idCounter = 0;
@@ -64,7 +67,7 @@ const parseExpression = (expr: string): Term[] => {
         if (!match) {
              const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
             if(numMatch) {
-                 return { id: `term-${idCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
+                 return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
             }
             return null;
         }
@@ -78,7 +81,7 @@ const parseExpression = (expr: string): Term[] => {
         } else {
              const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
             if(numMatch) {
-                 return { id: `term-${idCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
+                 return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
             }
             return null;
         }
@@ -86,13 +89,13 @@ const parseExpression = (expr: string): Term[] => {
         const vars = match[3] || 'constant';
         const sortedVars = vars.match(/[a-zA-Z]\^?\d*/g)?.sort().join('') || 'constant';
         
-        return { id: `term-${idCounter++}`, text: termStr, coefficient: sign * coeff, variables: sortedVars };
+        return { id: `term-${termIdCounter++}`, text: termStr, coefficient: sign * coeff, variables: sortedVars };
     }).filter((t): t is Term => t !== null && t.coefficient !== 0);
 };
 
 
-const TermToken = ({ term, onClick, isSelected, isPlaced }: { term: Term; onClick?: () => void; isSelected?: boolean; isPlaced?: boolean; }) => {  
-  const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
+const TermToken = ({ term, onClick, isSelected, isPlaced, isNew, isPaired }: { term: Term; onClick?: () => void; isSelected?: boolean; isPlaced?: boolean; isNew?: boolean, isPaired?: boolean }) => {  
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.TOKEN,
     item: term,
     canDrag: !isPlaced,
@@ -100,20 +103,21 @@ const TermToken = ({ term, onClick, isSelected, isPlaced }: { term: Term; onClic
       isDragging: !!monitor.isDragging(),
     }),
   }));
-
+  
   const ref = isPlaced ? null : drag;
 
   return (
     <div
       ref={ref}
       onClick={onClick}
-      style={{ display: term.isPaired ? 'none' : 'block' }}
       className={cn(
         'p-2 px-4 rounded-full border-2 bg-background shadow-md transition-all',
         isPlaced ? 'cursor-pointer' : 'cursor-grab',
         isDragging ? 'opacity-50 scale-110' : 'opacity-100',
         term.coefficient > 0 ? 'border-green-500' : 'border-red-500',
-        isSelected && 'ring-2 ring-offset-2 ring-primary'
+        isSelected && 'ring-2 ring-offset-2 ring-primary',
+        isPaired && 'animate-fade-out-zero',
+        isNew && 'animate-pop'
       )}
     >
       <span className="font-mono text-lg font-bold">{term.text}</span>
@@ -150,7 +154,9 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
                     term={t} 
                     isPlaced 
                     onClick={() => onTermClick(t)} 
-                    isSelected={selectedIds.includes(t.id)} 
+                    isSelected={selectedIds.includes(t.id)}
+                    isNew={t.isNew}
+                    isPaired={t.isPaired}
                 />
             ))}
         </div>
@@ -173,6 +179,7 @@ export function AlgebraArena() {
   const DndBackend = isMobile ? TouchBackend : HTML5Backend;
 
   const setupLevel = useCallback((levelIndex: number) => {
+    termIdCounter = 0;
     const expression = levels[levelIndex];
     const parsedTerms = parseExpression(expression);
     setUnplacedTerms(parsedTerms);
@@ -206,25 +213,80 @@ export function AlgebraArena() {
     useEffect(() => {
         if (selectedInZoneIds.length !== 2) return;
 
-        const selectedTerms = Object.values(zones)
-            .flat()
-            .filter(t => selectedInZoneIds.includes(t.id));
+        let zoneKey: string | null = null;
+        let selectedTerms: Term[] = [];
 
-        if (selectedTerms.length === 2 && selectedTerms[0].coefficient === -selectedTerms[1].coefficient && selectedTerms[0].variables === selectedTerms[1].variables) {
+        for (const key in zones) {
+            const termsInZone = zones[key];
+            const foundTerms = termsInZone.filter(t => selectedInZoneIds.includes(t.id));
+            if (foundTerms.length === 2) {
+                zoneKey = key;
+                selectedTerms = foundTerms;
+                break;
+            }
+        }
+        
+        if (zoneKey && selectedTerms.length === 2) {
             setZones(
                 produce(draft => {
                     for (const term of selectedTerms) {
-                        const zone = draft[term.variables];
-                        const termInZone = zone.find(t => t.id === term.id);
+                        const termInZone = draft[zoneKey!].find(t => t.id === term.id);
                         if (termInZone) {
                             termInZone.isPaired = true;
                         }
                     }
                 })
             );
-            setTimeout(() => setSelectedInZoneIds([]), 100);
+
+            setTimeout(() => {
+                const newCoefficient = selectedTerms[0].coefficient + selectedTerms[1].coefficient;
+                
+                setZones(
+                    produce(draft => {
+                        // Remove paired terms
+                        draft[zoneKey!] = draft[zoneKey!].filter(t => !selectedInZoneIds.includes(t.id));
+
+                        if (newCoefficient !== 0) {
+                            let newText = `${newCoefficient}${selectedTerms[0].variables}`;
+                            if (selectedTerms[0].variables === 'constant') {
+                                newText = `${newCoefficient}`;
+                            } else if (newCoefficient === 1) {
+                                newText = selectedTerms[0].variables;
+                            } else if (newCoefficient === -1) {
+                                newText = `-${selectedTerms[0].variables}`;
+                            }
+
+                             if (newCoefficient > 0 && draft[zoneKey!].length > 0) {
+                                newText = `+${newText}`;
+                            }
+
+                            // Add the new combined term
+                            const newTerm: Term = {
+                                id: `term-${termIdCounter++}`,
+                                text: newText,
+                                coefficient: newCoefficient,
+                                variables: selectedTerms[0].variables,
+                                isNew: true,
+                            };
+                            draft[zoneKey!].push(newTerm);
+                        }
+                    })
+                );
+
+                setSelectedInZoneIds([]);
+                // Reset the 'isNew' flag after the animation
+                setTimeout(() => {
+                     setZones(produce(draft => {
+                        const zone = draft[zoneKey!];
+                        if (zone) {
+                            zone.forEach(t => { t.isNew = false; });
+                        }
+                    }));
+                }, 500);
+
+            }, 500); // Wait for fade-out animation
         } else {
-             setTimeout(() => setSelectedInZoneIds([]), 500);
+            setTimeout(() => setSelectedInZoneIds([]), 500);
         }
     }, [selectedInZoneIds, zones]);
 
@@ -236,7 +298,10 @@ export function AlgebraArena() {
                 return prev.filter(id => id !== term.id);
             }
             if(prev.length < 2) {
-                return [...prev, term.id];
+                const isSameType = prev.length === 0 || zones[term.variables]?.some(t => t.id === prev[0]);
+                if (isSameType) {
+                    return [...prev, term.id];
+                }
             }
             return prev;
         });
@@ -250,7 +315,7 @@ export function AlgebraArena() {
     }
 
     const simplified = Object.entries(zones).map(([vars, terms]) => {
-        const total = terms.filter(t => !t.isPaired).reduce((acc, t) => acc + t.coefficient, 0);
+        const total = terms.reduce((acc, t) => acc + t.coefficient, 0);
         if (total === 0) return '';
         if (vars === 'constant') return total.toString();
         if (total === 1 && vars !== 'constant') return vars;
@@ -364,3 +429,5 @@ export function AlgebraArena() {
     </DndProvider>
   );
 }
+
+    

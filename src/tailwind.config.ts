@@ -97,8 +97,8 @@ export default {
           '100%': { opacity: '0', transform: 'scale(0) rotate(180deg)' },
         },
         'pop': {
-          '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.05)' },
+          '0%': { transform: 'scale(0.8)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
         },
         'fade-in': {
           '0%': { opacity: '0' },
@@ -149,3 +149,5 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
+
+    
