@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 
 export function AdminControls() {
@@ -26,39 +27,52 @@ export function AdminControls() {
         }
 
         setIsClearing(true);
-        try {
-            const userRanksRef = collection(firestore, 'userRanks');
-            const querySnapshot = await getDocs(userRanksRef);
-            
-            if (querySnapshot.empty) {
-                toast({
-                    title: 'Leaderboard is already empty.',
-                });
-                setIsClearing(false);
-                return;
-            }
 
-            const batch = writeBatch(firestore);
-            querySnapshot.docs.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
+        const userRanksRef = collection(firestore, 'userRanks');
+        const querySnapshot = await getDocs(userRanksRef).catch(error => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: userRanksRef.path,
+                operation: 'list',
+            }));
+            return null;
+        });
 
-            await batch.commit();
-
-            toast({
-                title: 'Success!',
-                description: 'The leaderboard has been cleared.',
-            });
-        } catch (error: any) {
-            console.error("Error clearing leaderboard: ", error);
-            toast({
-                variant: 'destructive',
-                title: 'Something went wrong.',
-                description: 'Could not clear the leaderboard. Check console for details.',
-            });
-        } finally {
+        if (!querySnapshot) {
             setIsClearing(false);
+            return;
         }
+
+        if (querySnapshot.empty) {
+            toast({
+                title: 'Leaderboard is already empty.',
+            });
+            setIsClearing(false);
+            return;
+        }
+
+        const batch = writeBatch(firestore);
+        querySnapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+
+        batch.commit()
+            .then(() => {
+                toast({
+                    title: 'Success!',
+                    description: 'The leaderboard has been cleared.',
+                });
+            })
+            .catch((error) => {
+                querySnapshot.docs.forEach((doc) => {
+                    errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: doc.ref.path,
+                        operation: 'delete',
+                    }));
+                });
+            })
+            .finally(() => {
+                setIsClearing(false);
+            });
     };
     
     const handleRefresh = () => {
