@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { VectorZen } from '@/components/vector-zen';
 import { MultiplicationZen } from '@/components/multiplication-zen';
 import { Ranking } from '@/components/ranking';
@@ -15,7 +16,7 @@ import { useAuth, useFirebase } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
-import { Award } from 'lucide-react';
+import { Award, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -95,16 +96,15 @@ export default function Home() {
   }, [allGamesComplete, score, saveScore, startTime]);
 
   useEffect(() => {
-    if (finalScore !== null) {
-      const durationInSeconds = (Date.now() - (startTime ?? Date.now())) / 1000;
+    if (finalScore !== null && startTime) {
+      const durationInSeconds = (Date.now() - startTime) / 1000;
       const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
       toast({
         title: `Time Bonus: +${timeBonus}`,
         description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finalScore]);
+  }, [finalScore, startTime, toast]);
   
   const startOver = () => {
     setIsGameStarted(false);
@@ -152,7 +152,7 @@ export default function Home() {
             VectorZen
           </h1>
           <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
-            A playful game to master integers. Can you top the leaderboard?
+            A playful set of games to master integers and algebra. Can you top the leaderboard?
           </p>
         </header>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -187,6 +187,16 @@ export default function Home() {
                 />
               </TabsContent>
             </Tabs>
+            <Card className="mt-4">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Gamepad2 /> More Games</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/algebra">
+                        <Button variant="outline">Algebra Arena</Button>
+                    </Link>
+                </CardContent>
+            </Card>
           </div>
           <div className="lg:col-span-1">
              <Card>
