@@ -33,63 +33,65 @@ let termIdCounter = 0;
 
 const parseExpression = (expr: string): Term[] => {
     let idCounter = 0;
+
+    const simplifiedExpr = expr
+        .replace(/\s/g, '')
+        .replace(/([a-zA-Z])\*([a-zA-Z])/g, (_, v1, v2) => {
+            if (v1 === v2) return `${v1}^2`;
+            return [v1, v2].sort().join('');
+        })
+        .replace(/([+-])/g, ' $1') // Add space before operators to split correctly
+        .trim();
     
-    // This regex is more robust and can handle terms with exponents, multiple variables, and constants.
-    const simplifiedExpr = expr.replace(/\s/g, '').replace(/([a-zA-Z])\*([a-zA-Z])/g, (_, v1, v2) => {
-        if (v1 === v2) return `${v1}^2`;
-        return [v1, v2].sort().join('');
-    });
+    const rawTerms = simplifiedExpr.split(' ');
 
-    const termRegex = /([+-]?(?:\d+(?:\.\d+)?|\.\d+)?(?:[a-zA-Z]+\^?\d*)*|[a-zA-Z]+\^?\d*)/g;
-    let rawTerms = simplifiedExpr.match(termRegex)?.filter(Boolean) || [];
-
-    // Combine consecutive operators or handle standalone operators if necessary
-    const terms = [];
-    let currentTerm = '';
-    for (const rawTerm of rawTerms) {
-        if (rawTerm === '+' || rawTerm === '-') {
-            if (currentTerm) {
-                terms.push(currentTerm);
-            }
-            currentTerm = rawTerm;
-        } else {
-            terms.push(currentTerm + rawTerm);
-            currentTerm = '';
-        }
-    }
-    if (currentTerm) terms.push(currentTerm);
-    
-
-    return terms.map(termStr => {
+    return rawTerms.map(termStr => {
         if (!termStr) return null;
         
         const match = termStr.match(/([+-]?)(\d*(?:\.\d+)?)((?:[a-zA-Z]+\^?\d*)+|[a-zA-Z]*)/);
         if (!match) {
-             const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
+            const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
             if(numMatch) {
                  return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
             }
             return null;
         }
 
-        const sign = match[1] === '-' ? -1 : 1;
+        let signText = match[1];
+        let coeffText = match[2];
+        let varText = match[3];
+
+        if (termStr.startsWith('+') || termStr.startsWith('-')) {
+             // It's an operator, sign is already correct
+        } else if (rawTerms.indexOf(termStr) > 0) {
+             // It's not the first term and doesn't have an explicit sign, so it's positive.
+             signText = '+';
+        }
+
+        const sign = signText === '-' ? -1 : 1;
         let coeff;
-        if (match[2] === '' && match[3] !== '') {
+
+        if (coeffText === '' && varText !== '') {
             coeff = 1;
-        } else if (match[2] !== '') {
-            coeff = parseFloat(match[2]);
+        } else if (coeffText !== '') {
+            coeff = parseFloat(coeffText);
         } else {
-             const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
+            const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
             if(numMatch) {
                  return { id: `term-${termIdCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
             }
             return null;
         }
         
-        const vars = match[3] || 'constant';
+        const vars = varText || 'constant';
         const sortedVars = vars.match(/[a-zA-Z]\^?\d*/g)?.sort().join('') || 'constant';
         
-        return { id: `term-${termIdCounter++}`, text: termStr, coefficient: sign * coeff, variables: sortedVars };
+        let termWithSign = termStr;
+        if (sign > 0 && !termWithSign.startsWith('+') && rawTerms.indexOf(termStr) > 0) {
+            termWithSign = `+${termWithSign}`;
+        }
+        
+        return { id: `term-${termIdCounter++}`, text: termWithSign, coefficient: sign * coeff, variables: sortedVars };
     }).filter((t): t is Term => t !== null && t.coefficient !== 0);
 };
 
@@ -204,10 +206,16 @@ export function AlgebraArena() {
 
   const handleDropTerm = (term: Term) => {
     setUnplacedTerms(prev => prev.filter(t => t.id !== term.id));
-    setZones(prev => ({
-        ...prev,
-        [term.variables]: [...prev[term.variables], term],
-    }));
+    setZones(
+        produce(draft => {
+            if(!draft[term.variables]) draft[term.variables] = [];
+            // When dropping, we want to show the sign if it's not the first term in the zone
+            if (draft[term.variables].length > 0 && term.coefficient > 0 && !term.text.startsWith('+')) {
+                term.text = `+${term.text}`;
+            }
+            draft[term.variables].push(term);
+        })
+    );
   };
   
     useEffect(() => {
@@ -216,6 +224,7 @@ export function AlgebraArena() {
         let zoneKey: string | null = null;
         let selectedTerms: Term[] = [];
 
+        // Find which zone the selected terms are in
         for (const key in zones) {
             const termsInZone = zones[key];
             const foundTerms = termsInZone.filter(t => selectedInZoneIds.includes(t.id));
@@ -227,6 +236,7 @@ export function AlgebraArena() {
         }
         
         if (zoneKey && selectedTerms.length === 2) {
+            // Set 'isPaired' for animation
             setZones(
                 produce(draft => {
                     for (const term of selectedTerms) {
@@ -238,34 +248,39 @@ export function AlgebraArena() {
                 })
             );
 
+            // After animation, update the state
             setTimeout(() => {
-                const newCoefficient = selectedTerms[0].coefficient + selectedTerms[1].coefficient;
+                const newCoefficient = selectedTerms.reduce((sum, t) => sum + t.coefficient, 0);
                 
                 setZones(
                     produce(draft => {
-                        // Remove paired terms
-                        draft[zoneKey!] = draft[zoneKey!].filter(t => !selectedInZoneIds.includes(t.id));
+                        const currentZone = draft[zoneKey!];
+                        // Remove the two old terms
+                        draft[zoneKey!] = currentZone.filter(t => !selectedInZoneIds.includes(t.id));
 
                         if (newCoefficient !== 0) {
-                            let newText = `${newCoefficient}${selectedTerms[0].variables}`;
-                            if (selectedTerms[0].variables === 'constant') {
-                                newText = `${newCoefficient}`;
-                            } else if (newCoefficient === 1) {
-                                newText = selectedTerms[0].variables;
-                            } else if (newCoefficient === -1) {
-                                newText = `-${selectedTerms[0].variables}`;
-                            }
+                            const variables = selectedTerms[0].variables;
+                            let newText: string;
 
-                             if (newCoefficient > 0 && draft[zoneKey!].length > 0) {
+                            if (variables === 'constant') {
+                                newText = `${newCoefficient}`;
+                            } else {
+                                if (newCoefficient === 1) newText = variables;
+                                else if (newCoefficient === -1) newText = `-${variables}`;
+                                else newText = `${newCoefficient}${variables}`;
+                            }
+                            
+                            // Decide if a '+' sign is needed
+                            const isFirstTerm = draft[zoneKey!].length === 0 && Object.values(draft).flat().length === 0;
+                            if (newCoefficient > 0 && !isFirstTerm) {
                                 newText = `+${newText}`;
                             }
 
-                            // Add the new combined term
                             const newTerm: Term = {
                                 id: `term-${termIdCounter++}`,
                                 text: newText,
                                 coefficient: newCoefficient,
-                                variables: selectedTerms[0].variables,
+                                variables: variables,
                                 isNew: true,
                             };
                             draft[zoneKey!].push(newTerm);
@@ -274,7 +289,8 @@ export function AlgebraArena() {
                 );
 
                 setSelectedInZoneIds([]);
-                // Reset the 'isNew' flag after the animation
+
+                // Reset the 'isNew' flag after the pop animation
                 setTimeout(() => {
                      setZones(produce(draft => {
                         const zone = draft[zoneKey!];
@@ -284,25 +300,31 @@ export function AlgebraArena() {
                     }));
                 }, 500);
 
-            }, 500); // Wait for fade-out animation
+            }, 500);
         } else {
+            // Deselect if not a valid pair (e.g. from different zones)
             setTimeout(() => setSelectedInZoneIds([]), 500);
         }
-    }, [selectedInZoneIds, zones]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedInZoneIds]);
 
     const handleTermClickInZone = (term: Term) => {
         if (isLevelSolved || term.isPaired) return;
         
         setSelectedInZoneIds(prev => {
+            // Deselect if clicked again
             if (prev.includes(term.id)) {
                 return prev.filter(id => id !== term.id);
             }
+            // Add to selection if less than 2 are selected
             if(prev.length < 2) {
-                const isSameType = prev.length === 0 || zones[term.variables]?.some(t => t.id === prev[0]);
-                if (isSameType) {
+                // Ensure the new selection is from the same zone as the first
+                const firstSelectedTerm = zones[term.variables]?.find(t => t.id === prev[0]);
+                if (prev.length === 0 || firstSelectedTerm) {
                     return [...prev, term.id];
                 }
             }
+            // If 2 are already selected, or it's from a different zone, do nothing
             return prev;
         });
     };
@@ -314,16 +336,8 @@ export function AlgebraArena() {
         return;
     }
 
-    const simplified = Object.entries(zones).map(([vars, terms]) => {
-        const total = terms.reduce((acc, t) => acc + t.coefficient, 0);
-        if (total === 0) return '';
-        if (vars === 'constant') return total.toString();
-        if (total === 1 && vars !== 'constant') return vars;
-        if (total === -1 && vars !== 'constant') return `-${vars}`;
-        return `${total}${vars}`;
-    }).filter(Boolean).join('+').replace(/\+-/g, '-');
-    
-    const normalize = (str: string) => str.replace(/\s/g, '').split('+').sort().join('+');
+    const simplified = Object.values(zones).flat().map(term => term.text).join('').replace(/^\+/, '');
+    const normalize = (str: string) => str.replace(/\s/g, '').split(/(?=[+-])/).filter(Boolean).sort().join('');
 
     if (normalize(userAnswer) === normalize(simplified)) {
         toast({ title: 'Correct!', description: 'Expression simplified successfully!' });
@@ -429,5 +443,3 @@ export function AlgebraArena() {
     </DndProvider>
   );
 }
-
-    
