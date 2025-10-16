@@ -140,18 +140,6 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
     }),
   }));
 
-  const total = terms.filter(t => !t.isPaired).reduce((acc, t) => acc + t.coefficient, 0);
-
-  const formatTerm = (coeff: number, vars: string) => {
-    if (vars === 'constant') return coeff.toString();
-    if (coeff === 0) return '';
-    if (coeff === 1 && vars) return vars;
-    if (coeff === -1 && vars) return `-${vars}`;
-    return `${coeff}${vars}`;
-  }
-
-  const displayText = formatTerm(total, variableType);
-
   return (
     <div ref={drop} className={cn('p-4 rounded-lg border-2 border-dashed transition-all min-h-[100px] flex flex-col items-center justify-center', isOver && canDrop ? 'bg-primary/20 border-primary' : 'bg-muted/50')}>
         <p className="text-sm text-muted-foreground font-bold">{variableType === 'constant' ? 'Constants' : variableType}</p>
@@ -166,9 +154,6 @@ const CombiningZone = ({ variableType, onDrop, terms, onTermClick, selectedIds }
                 />
             ))}
         </div>
-        {terms.length > 0 && (
-            <p className="font-mono text-2xl font-bold mt-4 pt-2 border-t-2 w-full text-center">{displayText}</p>
-        )}
     </div>
   );
 };
@@ -279,7 +264,7 @@ export function AlgebraArena() {
         toast({ title: 'Correct!', description: 'Expression simplified successfully!' });
         setIsLevelSolved(true);
     } else {
-        toast({ variant: 'destructive', title: 'Not quite!', description: 'That answer is incorrect. Try again!' });
+        toast({ variant: 'destructive', title: 'Not quite!', description: "That answer is incorrect. Try again!" });
     }
   };
 
@@ -379,5 +364,3 @@ export function AlgebraArena() {
     </DndProvider>
   );
 }
-
-    
