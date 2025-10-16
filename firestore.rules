@@ -1,73 +1,55 @@
 /**
- * @fileoverview Firestore Security Rules for VectorZen and Algebra Arena.
+ * @file Firestore Security Rules for VectorZen app.
  *
- * Core Philosophy:
- * This ruleset prioritizes security by enforcing strict ownership and preventing unauthorized data access.
- * It is designed to be flexible during the prototyping phase, focusing on authorization rather than data schema validation.
+ * @core_philosophy This ruleset allows public read access to all ranking data, but restricts write access.
+ * This approach prioritizes allowing application users to view the rankings, while unauthorized edits are disallowed.
  *
- * Data Structure:
- * The database stores user ranking data in two top-level collections: `/userRanks` for VectorZen and `/algebraRanks` for Algebra Arena.
- * Each document in these collections represents a user's ranking information, including their score, username, and last updated timestamp.
+ * @data_structure The data is organized into three top-level collections: `/userRanks`, `/algebraRanks`, and `/equationRanks`.
+ *  Each collection stores user ranking data for a specific game.
  *
- * Key Security Decisions:
- * - User ranking data can only be created, updated, or deleted by authenticated users.
- * - Listing all user rankings is allowed.
- * - Data validation is minimal during prototyping to allow for rapid iteration.
- *
- * Denormalization for Authorization:
- *  - No denormalization is used as this ruleset relies solely on authenticated user ID for authorization in conjunction with public `list` access.
- * Structural Segregation:
- *  - Public `list` operations are safe because all documents in `/userRanks` and `/algebraRanks` are intended to be public from the start.
+ * @key_security_decisions
+ *   - Public read access is granted to all ranking collections.
+ *   - All write access is denied.
+ *   - Listing is allowed, given this is a score ranking use case.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secures the /userRanks collection. Allows anyone to read (get, list),
-     *              but only allows authenticated users to create, update, or delete their own rank.
-     * @path /userRanks
-     * @allow (get, list) - Anyone can read user ranks.
-     * @allow (create) - Authenticated users can create their own rank.
-     * @deny (create) - Unauthenticated users cannot create ranks.
-     * @allow (update) - Authenticated users can update their own rank.
-     * @deny (update) - Authenticated users cannot update ranks other than their own.
-     * @allow (delete) - Authenticated users can delete their own rank.
-     * @deny (delete) - Authenticated users cannot delete ranks other than their own.
-     * @principle Allows public read access but restricts write access to authenticated users only.
+     * @description Allows public read access to the `/userRanks` collection, but denies all write access.
+     * @path /databases/{database}/documents/userRanks
+     * @allow (get, list) Any user can read the documents in this collection.
+     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
+     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
      */
     match /userRanks/{userRankId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Secures the /algebraRanks collection. Allows anyone to read (get, list),
-     *              but only allows authenticated users to create, update, or delete their own rank.
-     * @path /algebraRanks
-     * @allow (get, list) - Anyone can read user ranks.
-     * @allow (create) - Authenticated users can create their own rank.
-     * @deny (create) - Unauthenticated users cannot create ranks.
-     * @allow (update) - Authenticated users can update their own rank.
-     * @deny (update) - Authenticated users cannot update ranks other than their own.
-     * @allow (delete) - Authenticated users can delete their own rank.
-     * @deny (delete) - Authenticated users cannot delete ranks other than their own.
-     * @principle Allows public read access but restricts write access to authenticated users only.
+     * @description Allows public read access to the `/algebraRanks` collection, but denies all write access.
+     * @path /databases/{database}/documents/algebraRanks
+     * @allow (get, list) Any user can read the documents in this collection.
+     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
+     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
      */
     match /algebraRanks/{algebraRankId} {
-      allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
-    // Helper function to determine if the user is signed in.
-    function isSignedIn() {
-      return request.auth != null;
+    /**
+     * @description Allows public read access to the `/equationRanks` collection, but denies all write access.
+     * @path /databases/{database}/documents/equationRanks
+     * @allow (get, list) Any user can read the documents in this collection.
+     * @deny (create, update, delete) No user can create, update, or delete documents in this collection.
+     * @principle Allows any user to see the leaderboard, but restricts unauthorized edits.
+     */
+    match /equationRanks/{equationRankId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }
