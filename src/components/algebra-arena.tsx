@@ -279,7 +279,7 @@ export function AlgebraArena() {
         toast({ title: 'Correct!', description: 'Expression simplified successfully!' });
         setIsLevelSolved(true);
     } else {
-        toast({ variant: 'destructive', title: 'Not quite!', description: `The correct answer is ${simplified}. Try again!` });
+        toast({ variant: 'destructive', title: 'Not quite!', description: 'That answer is incorrect. Try again!' });
     }
   };
 
