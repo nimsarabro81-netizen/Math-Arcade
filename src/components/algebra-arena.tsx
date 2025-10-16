@@ -35,33 +35,34 @@ const parseExpression = (expr: string): Term[] => {
         return [v1, v2].sort().join('');
     });
 
-    const terms = simplifiedExpr.match(/([+-]?)(\d*\.?\d*)(\*?)([a-zA-Z]+\^?\d*|[a-zA-Z]+)/g) || simplifiedExpr.match(/([+-]?)(\d+)/g) || [];
+    // This regex is more robust and can handle terms with exponents, multiple variables, and constants.
+    const terms = simplifiedExpr.replace(/\s/g, '').match(/[+-]?(?:\d*\.\d+|\d+)?(?:[a-zA-Z]+\^?\d*|\*?[a-zA-Z]+)*/g)?.filter(Boolean) || [];
 
     return terms.map(termStr => {
-        const match = termStr.match(/([+-]?)(\d*\.?\d*)(\*?)([a-zA-Z]+\^?\d*|[a-zA-Z]*)/);
+        const match = termStr.match(/([+-]?)(\d*\.?\d*)((?:[a-zA-Z]+\^?\d*)+|[a-zA-Z]*)/);
         if (!match) {
-            //Handles constants
-            const numMatch = termStr.match(/([+-]?)(\d*\.?\d*)/);
-            if (!numMatch) return null;
-            const sign = numMatch[1] === '-' ? -1 : 1;
-            const val = parseFloat(numMatch[2]);
-            return { id: `term-${idCounter++}`, text: termStr, coefficient: sign * val, variables: 'constant' };
+            return null;
         }
 
         const sign = match[1] === '-' ? -1 : 1;
         let coeff = parseFloat(match[2]);
-        if (isNaN(coeff)) {
+
+        // Handle cases like 'x' or '-x' where coefficient is 1
+        if (isNaN(coeff) && match[3]) {
             coeff = 1;
+        } else if (isNaN(coeff)) {
+            // This case handles standalone numbers that might have been matched
+            const numMatch = termStr.match(/[+-]?\d*\.?\d+/);
+            if(numMatch) {
+                 return { id: `term-${idCounter++}`, text: termStr, coefficient: parseFloat(numMatch[0]), variables: 'constant' };
+            }
+            return null;
         }
         
-        // Handle expressions like '-x'
-        if (match[2] === '' && match[4]) {
-            coeff = 1;
-        }
-
-        const vars = match[4] || 'constant';
-        const sortedVars = vars.split('').sort().join(''); // Sort variables for consistency e.g. yx -> xy
-
+        const vars = match[3] || 'constant';
+        // Sort variables for consistency e.g. yx -> xy, but keep exponents with their base e.g., x^2y -> x^2y
+        const sortedVars = vars.match(/[a-zA-Z]\^?\d*/g)?.sort().join('') || 'constant';
+        
         return { id: `term-${idCounter++}`, text: termStr, coefficient: sign * coeff, variables: sortedVars };
     }).filter((t): t is Term => t !== null);
 };
@@ -185,8 +186,8 @@ export function AlgebraArena() {
         const total = terms.reduce((acc, t) => acc + t.coefficient, 0);
         if (total === 0) return '';
         if (vars === 'constant') return total.toString();
-        if (total === 1) return vars;
-        if (total === -1) return `-${vars}`;
+        if (total === 1 && vars !== 'constant') return vars;
+        if (total === -1 && vars !== 'constant') return `-${vars}`;
         return `${total}${vars}`;
     }).filter(Boolean).join('+').replace(/\+-/g, '-');
     
@@ -288,3 +289,5 @@ export function AlgebraArena() {
     </DndProvider>
   );
 }
+
+    
