@@ -191,9 +191,12 @@ export default function Home() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Gamepad2 /> More Games</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-wrap gap-2">
                     <Link href="/algebra">
                         <Button variant="outline">Algebra Arena</Button>
+                    </Link>
+                    <Link href="/equation">
+                        <Button variant="outline">Equation Equilibrium</Button>
                     </Link>
                 </CardContent>
             </Card>

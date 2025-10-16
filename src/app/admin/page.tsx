@@ -16,9 +16,10 @@ export default function AdminPage() {
           </p>
         </header>
         <Tabs defaultValue="vectorzen" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="vectorzen">VectorZen Leaderboard</TabsTrigger>
-            <TabsTrigger value="algebra">Algebra Arena Leaderboard</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="vectorzen">VectorZen</TabsTrigger>
+            <TabsTrigger value="algebra">Algebra Arena</TabsTrigger>
+            <TabsTrigger value="equation">Equation Equilibrium</TabsTrigger>
           </TabsList>
           <TabsContent value="vectorzen">
             <section className="mt-6 space-y-4">
@@ -30,6 +31,12 @@ export default function AdminPage() {
             <section className="mt-6 space-y-4">
               <AdminControls collectionName="algebraRanks" leaderboardName="Algebra Arena Leaderboard" />
               <Ranking collectionName="algebraRanks" title="Algebra Arena Leaderboard" />
+            </section>
+          </TabsContent>
+          <TabsContent value="equation">
+            <section className="mt-6 space-y-4">
+                <AdminControls collectionName="equationRanks" leaderboardName="Equation Equilibrium Leaderboard" />
+                <Ranking collectionName="equationRanks" title="Equation Equilibrium Leaderboard" />
             </section>
           </TabsContent>
         </Tabs>

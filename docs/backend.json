@@ -61,6 +61,18 @@
         "lastUpdated"
       ]
     },
+    "EquationRank": {
+        "title": "EquationRank",
+        "type": "object",
+        "description": "Stores user ranking information for the Equation Equilibrium game.",
+        "properties": {
+            "userId": { "type": "string", "description": "Reference to the User." },
+            "username": { "type": "string", "description": "The user's display name, 'Anonymous' for anonymous users." },
+            "score": { "type": "number", "description": "The user's score in the Equation Equilibrium game." },
+            "lastUpdated": { "type": "string", "description": "Timestamp of the last time the user's score/rank was updated.", "format": "date-time" }
+        },
+        "required": ["userId", "username", "score", "lastUpdated"]
+    },
     "User": {
       "title": "User",
       "type": "object",
@@ -96,6 +108,13 @@
                 "$ref": "#/entities/AlgebraRank"
             },
             "description": "Stores rankings for all users for the Algebra Arena game."
+        },
+        {
+            "path": "/equationRanks",
+            "schema": {
+                "$ref": "#/entities/EquationRank"
+            },
+            "description": "Stores rankings for all users for the Equation Equilibrium game."
         }
       ]
   }

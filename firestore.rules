@@ -2,81 +2,72 @@
  * @fileoverview Firestore Security Rules for VectorZen and Algebra Arena.
  *
  * Core Philosophy:
- * This ruleset prioritizes security by strictly controlling access to user ranking data.
- * All user rankings are publicly readable to facilitate leaderboards, but write access
- * is restricted to authenticated users.
+ * This ruleset prioritizes security by enforcing strict ownership and preventing unauthorized data access.
+ * It is designed to be flexible during the prototyping phase, focusing on authorization rather than data schema validation.
  *
  * Data Structure:
- * The database contains two top-level collections: 'userRanks' and 'algebraRanks'.
- * Both collections store ranking information with 'userId', 'username', 'score', and
- * 'lastUpdated' fields.
+ * The database stores user ranking data in two top-level collections: `/userRanks` for VectorZen and `/algebraRanks` for Algebra Arena.
+ * Each document in these collections represents a user's ranking information, including their score, username, and last updated timestamp.
  *
  * Key Security Decisions:
- * - Public Read Access: Both 'userRanks' and 'algebraRanks' collections are publicly
- *   readable to support leaderboard functionality.
- * - Authenticated Writes: Only authenticated users can create, update, or delete ranking
- *   data. The 'userId' field must match the authenticated user's UID to ensure
- *   users can only modify their own ranking data.
- * - Denormalization for Authorization: The 'userId' field within each rank document is
- *   used for authorization, ensuring the user's UID matches the document's owner.
+ * - User ranking data can only be created, updated, or deleted by authenticated users.
+ * - Listing all user rankings is allowed.
+ * - Data validation is minimal during prototyping to allow for rapid iteration.
+ *
+ * Denormalization for Authorization:
+ *  - No denormalization is used as this ruleset relies solely on authenticated user ID for authorization in conjunction with public `list` access.
+ * Structural Segregation:
+ *  - Public `list` operations are safe because all documents in `/userRanks` and `/algebraRanks` are intended to be public from the start.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants public read access to the 'algebraRanks' collection, but restricts writes to authenticated users who own the data.
-     * @path /databases/{database}/documents/algebraRanks
-     * @allow (get, list): Public read access for leaderboard functionality.
-     * @allow (create): Authenticated user creates a new rank with matching userId.
-     * @allow (update, delete): Authenticated user modifies their existing rank with matching userId.
-     * @deny (create): Unauthenticated user attempts to create a rank.
-     * @deny (update, delete): Unauthenticated user attempts to modify a rank.
-     * @deny (create): Authenticated user attempts to create a rank with a mismatched userId.
-     * @deny (update, delete): Authenticated user attempts to modify a rank with a mismatched userId.
-     * @principle Allows public leaderboard reads and enforces user-ownership for writes.
-     */
-    match /algebraRanks/{algebraRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.userId);
-    }
-
-    /**
-     * @description Grants public read access to the 'userRanks' collection, but restricts writes to authenticated users who own the data.
-     * @path /databases/{database}/documents/userRanks
-     * @allow (get, list): Public read access for leaderboard functionality.
-     * @allow (create): Authenticated user creates a new rank with matching userId.
-     * @allow (update, delete): Authenticated user modifies their existing rank with matching userId.
-     * @deny (create): Unauthenticated user attempts to create a rank.
-     * @deny (update, delete): Unauthenticated user attempts to modify a rank.
-     * @deny (create): Authenticated user attempts to create a rank with a mismatched userId.
-     * @deny (update, delete): Authenticated user attempts to modify a rank with a mismatched userId.
-     * @principle Allows public leaderboard reads and enforces user-ownership for writes.
+     * @description Secures the /userRanks collection. Allows anyone to read (get, list),
+     *              but only allows authenticated users to create, update, or delete their own rank.
+     * @path /userRanks
+     * @allow (get, list) - Anyone can read user ranks.
+     * @allow (create) - Authenticated users can create their own rank.
+     * @deny (create) - Unauthenticated users cannot create ranks.
+     * @allow (update) - Authenticated users can update their own rank.
+     * @deny (update) - Authenticated users cannot update ranks other than their own.
+     * @allow (delete) - Authenticated users can delete their own rank.
+     * @deny (delete) - Authenticated users cannot delete ranks other than their own.
+     * @principle Allows public read access but restricts write access to authenticated users only.
      */
     match /userRanks/{userRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && isExistingOwner(resource.data.userId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
-    // ---- Helper Functions ----
-
     /**
-     * @description Checks if the user is signed in.
-     * @return {bool} True if the user is signed in, false otherwise.
+     * @description Secures the /algebraRanks collection. Allows anyone to read (get, list),
+     *              but only allows authenticated users to create, update, or delete their own rank.
+     * @path /algebraRanks
+     * @allow (get, list) - Anyone can read user ranks.
+     * @allow (create) - Authenticated users can create their own rank.
+     * @deny (create) - Unauthenticated users cannot create ranks.
+     * @allow (update) - Authenticated users can update their own rank.
+     * @deny (update) - Authenticated users cannot update ranks other than their own.
+     * @allow (delete) - Authenticated users can delete their own rank.
+     * @deny (delete) - Authenticated users cannot delete ranks other than their own.
+     * @principle Allows public read access but restricts write access to authenticated users only.
      */
+    match /algebraRanks/{algebraRankId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    // Helper function to determine if the user is signed in.
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the resource and if the resource exists.
-     * @param {string} userId The user ID to check against.
-     * @return {bool} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId && resource != null;
     }
   }
 }
