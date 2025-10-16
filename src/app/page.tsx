@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Atom, Divide, Puzzle } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export default function WelcomePage() {
           {games.map((game, index) => (
             <Card 
               key={game.title} 
-              className="group transform transition-transform duration-300 hover:scale-105 hover:shadow-2xl hover:border-primary/50 animate-fade-in"
+              className="group flex flex-col transform transition-transform duration-300 hover:scale-105 hover:shadow-2xl hover:border-primary/50 animate-fade-in"
               style={{ animationDelay: `${(index + 1) * 0.2}s` }}
             >
               <CardHeader className="items-center">
@@ -52,12 +52,14 @@ export default function WelcomePage() {
                 </div>
                 <CardTitle className="mt-4 font-headline text-3xl">{game.title}</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col items-center">
-                <CardDescription className="mb-6 h-16">{game.description}</CardDescription>
-                <Link href={game.link} passHref>
+              <CardContent className="flex-grow">
+                <CardDescription className="h-16">{game.description}</CardDescription>
+              </CardContent>
+              <CardFooter>
+                <Link href={game.link} passHref className="w-full">
                   <Button className="w-full">Play Now</Button>
                 </Link>
-              </CardContent>
+              </CardFooter>
             </Card>
           ))}
         </div>
