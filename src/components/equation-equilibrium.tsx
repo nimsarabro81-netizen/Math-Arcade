@@ -145,10 +145,12 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
     const items = [];
     const absValue = Math.abs(value);
     const isNegative = value < 0;
+    const fullUnits = Math.floor(absValue);
+    const fractionalUnit = absValue - fullUnits;
 
-    for (let i = 0; i < absValue; i++) {
+    for (let i = 0; i < fullUnits; i++) {
         items.push(
-            <div key={i} className={cn(
+            <div key={`full-${i}`} className={cn(
                 "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-xl border-b-4",
                 isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
                 isNegative && "bg-red-500 border-red-700",
@@ -157,6 +159,21 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
             </div>
         );
     }
+    
+    if (fractionalUnit > 0) {
+        const heightClass = isX ? `h-6` : `h-5`;
+        items.push(
+             <div key="fraction" className={cn(
+                "flex items-center justify-center font-bold text-white rounded-t-lg shadow-md transition-all text-xl border-b-4 overflow-hidden",
+                 isX ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
+                 isNegative && "bg-red-500 border-red-700",
+                 heightClass
+            )}>
+                <span className={cn(isX ? 'mt-[-1.75rem]' : 'mt-[-1.25rem]')}>{isX ? 'x' : '1'}</span>
+            </div>
+        )
+    }
+
     return <div className="flex flex-wrap items-center justify-center gap-2 p-1">{items}</div>;
 };
 
