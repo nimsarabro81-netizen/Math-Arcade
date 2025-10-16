@@ -163,29 +163,28 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setupLevel(currentLevelIndex);
   }, [currentLevelIndex, setupLevel]);
 
+  const applyOp = (terms: {x: number, c: number}, operation: {op: string, value: number}) => {
+      let newTerms = { ...terms };
+      switch (operation.op) {
+          case '+': newTerms.c += operation.value; break;
+          case '-': newTerms.c -= operation.value; break;
+          case 'x': 
+              newTerms.c *= operation.value;
+              newTerms.x *= operation.value;
+              break;
+          case '÷': 
+               if (newTerms.c % operation.value !== 0 || newTerms.x % operation.value !== 0) {
+                  toast({variant: 'destructive', title: 'Invalid Division', description: "You can only divide if all terms on a side are divisible."});
+                  return null;
+              }
+              newTerms.c /= operation.value;
+              newTerms.x /= operation.value;
+              break;
+      }
+      return newTerms;
+  };
+
   const handleOperation = (side: 'left' | 'right', operation: {op: string, value: number}) => {
-    
-    const applyOp = (terms: {x: number, c: number}) => {
-        let newTerms = { ...terms };
-        switch (operation.op) {
-            case '+': newTerms.c += operation.value; break;
-            case '-': newTerms.c -= operation.value; break;
-            case 'x': 
-                newTerms.c *= operation.value;
-                newTerms.x *= operation.value;
-                break;
-            case '÷': 
-                 if (newTerms.c % operation.value !== 0 || newTerms.x % operation.value !== 0) {
-                    toast({variant: 'destructive', title: 'Invalid Division', description: "You can only divide if all terms on a side are divisible."});
-                    return null;
-                }
-                newTerms.c /= operation.value;
-                newTerms.x /= operation.value;
-                break;
-        }
-        return newTerms;
-    };
-    
     if (opApplied.side && opApplied.side !== side) { // Second operation
         if (JSON.stringify(opApplied.op) !== JSON.stringify(operation)) {
             toast({variant: 'destructive', title: "Unbalanced!", description: "You must perform the exact same operation on both sides."});
@@ -193,16 +192,23 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
         }
         
         setLevelState(produce(draft => {
-            const firstResult = applyOp(draft[opApplied.side!]);
-            if (firstResult) draft[opApplied.side!] = firstResult;
+            // The side that the first operation was on
+            const firstSide = opApplied.side!;
+            const secondSide = side;
+
+            const firstResult = applyOp(draft[firstSide], opApplied.op);
+            if (firstResult) draft[firstSide] = firstResult;
             
-            const secondResult = applyOp(draft[side]);
-            if (secondResult) draft[side] = secondResult;
+            const secondResult = applyOp(draft[secondSide], operation);
+            if (secondResult) draft[secondSide] = secondResult;
         }));
 
         setOpApplied({side: null, op: null});
 
-    } else { // First operation
+    } else if (opApplied.side === side) {
+        toast({variant: 'destructive', title: "Wait!", description: "You need to apply the same operation to the OTHER side to keep things balanced."});
+    }
+    else { // First operation
         setOpApplied({side, op: operation});
         toast({title: "Balance the scale!", description: `Now perform the same operation on the ${side === 'left' ? 'right' : 'left'} side.`})
     }
@@ -345,3 +351,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </DndProvider>
   );
 }
+
+    
