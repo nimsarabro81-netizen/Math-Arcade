@@ -185,30 +185,37 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   };
 
   const handleOperation = (side: 'left' | 'right', operation: {op: string, value: number}) => {
-    if (opApplied.side && opApplied.side !== side) { // Second operation
+    if (isLevelSolved) return;
+
+    if (opApplied.side && opApplied.side !== side) { // This is the second operation
         if (JSON.stringify(opApplied.op) !== JSON.stringify(operation)) {
             toast({variant: 'destructive', title: "Unbalanced!", description: "You must perform the exact same operation on both sides."});
+            setOpApplied({side: null, op: null}); // Reset on failure
             return;
         }
         
-        setLevelState(produce(draft => {
-            // The side that the first operation was on
+        setLevelState(currentState => {
             const firstSide = opApplied.side!;
             const secondSide = side;
 
-            const firstResult = applyOp(draft[firstSide], opApplied.op);
-            if (firstResult) draft[firstSide] = firstResult;
-            
-            const secondResult = applyOp(draft[secondSide], operation);
-            if (secondResult) draft[secondSide] = secondResult;
-        }));
+            const firstResult = applyOp(currentState[firstSide], opApplied.op);
+            const secondResult = applyOp(currentState[secondSide], operation);
 
-        setOpApplied({side: null, op: null});
+            if (firstResult && secondResult) {
+                return {
+                    [firstSide]: firstResult,
+                    [secondSide]: secondResult,
+                } as {left: {x: number, c: number}, right: {x: number, c: number}};
+            }
+            return currentState; // Return original state if any operation was invalid
+        });
 
-    } else if (opApplied.side === side) {
+        setOpApplied({side: null, op: null}); // Reset after successful application
+
+    } else if (opApplied.side === side) { // Applying to the same side twice
         toast({variant: 'destructive', title: "Wait!", description: "You need to apply the same operation to the OTHER side to keep things balanced."});
     }
-    else { // First operation
+    else { // This is the first operation
         setOpApplied({side, op: operation});
         toast({title: "Balance the scale!", description: `Now perform the same operation on the ${side === 'left' ? 'right' : 'left'} side.`})
     }
