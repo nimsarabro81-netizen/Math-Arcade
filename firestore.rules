@@ -1,74 +1,72 @@
 /**
- * @fileoverview Firestore Security Rules for VectorZen and associated games.
+ * @fileoverview Firestore Security Rules for VectorZen.
  *
  * Core Philosophy:
- * This ruleset allows any authenticated user (anonymous included) to create their ranking.
+ * This ruleset prioritizes ease of iteration by focusing on authorization and skipping detailed data validation.
+ * Read access to game settings is public, while all other collections are write-protected for now.
  *
  * Data Structure:
- * The database stores user ranking data for multiple games in top-level collections:
- *   - /userRanks: Rankings for VectorZen
- *   - /algebraRanks: Rankings for Algebra Arena
- *   - /equationRanks: Rankings for Equation Equilibrium
+ * - /gameSettings: Stores public game settings (isActive flag).
+ * - /userRanks: Stores user ranking information.
+ * - /algebraRanks: Stores user ranking information for algebra game.
+ * - /equationRanks: Stores user ranking information for equation game.
  *
  * Key Security Decisions:
- * - Any authenticated user can create a rank (needed for anonymous users)
- * - All collections are publicly readable to faciliate displaying the leaderboards
- * - The userId property on the documents must match the authenticated user's id.
+ * - Game settings are publicly readable to facilitate the app's core functionality of displaying active games.
+ * - Ranking data, while public in nature, is write-protected during this prototyping phase to prevent abuse.
+ * - No user-specific data is currently present, so user-based access control is not yet implemented beyond requiring a valid auth.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows any authenticated user to read and write user ranks for the VectorZen game.
+     * @description Allows anyone to read game settings, but restricts all write access.
+     * @path /gameSettings
+     * @allow (get, list): Any user can read the game settings.
+     * @deny (create, update, delete): No one can create, update, or delete game settings through the client.
+     * @principle Allows public read access to game settings for displaying active games.
+     */
+    match /gameSettings/{document} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Restricts all read and write access to userRanks collection.
      * @path /userRanks
-     * @allow (get, list): Any user can view the leaderboard.
-     * @allow (create): Any authenticated user can create their own ranking.
-     * @deny (create): Creating a rank with a mismatched userId.
-     * @allow (update, delete): Only the user who created the ranking can update or delete it.
-     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
-     * @principle Allows any authenticated user to read and write user ranks.
+     * @allow None
+     * @deny All operations are denied, requiring backend management of ranking data.
+     * @principle Prevents unauthorized modifications to user ranking data.
      */
-    match /userRanks/{userRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
+    match /userRanks/{document} {
+      allow get, list: if false;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows any authenticated user to read and write user ranks for the Algebra Arena game.
+     * @description Restricts all read and write access to algebraRanks collection.
      * @path /algebraRanks
-     * @allow (get, list): Any user can view the leaderboard.
-     * @allow (create): Any authenticated user can create their own ranking.
-     * @deny (create): Creating a rank with a mismatched userId.
-     * @allow (update, delete): Only the user who created the ranking can update or delete it.
-     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
-     * @principle Allows any authenticated user to read and write user ranks.
+     * @allow None
+     * @deny All operations are denied, requiring backend management of ranking data.
+     * @principle Prevents unauthorized modifications to user ranking data.
      */
-    match /algebraRanks/{algebraRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
+    match /algebraRanks/{document} {
+      allow get, list: if false;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Allows any authenticated user to read and write user ranks for the Equation Equilibrium game.
+     * @description Restricts all read and write access to equationRanks collection.
      * @path /equationRanks
-     * @allow (get, list): Any user can view the leaderboard.
-     * @allow (create): Any authenticated user can create their own ranking.
-     * @deny (create): Creating a rank with a mismatched userId.
-     * @allow (update, delete): Only the user who created the ranking can update or delete it.
-     * @deny (update, delete): A different user attempting to modify or delete another user's rank.
-     * @principle Allows any authenticated user to read and write user ranks.
+     * @allow None
+     * @deny All operations are denied, requiring backend management of ranking data.
+     * @principle Prevents unauthorized modifications to user ranking data.
      */
-    match /equationRanks/{equationRankId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid && resource != null;
+    match /equationRanks/{document} {
+      allow get, list: if false;
+      allow create, update, delete: if false;
     }
-  }
 
-  function isSignedIn() {
-    return request.auth != null;
   }
 }
