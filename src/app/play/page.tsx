@@ -17,7 +17,7 @@ export default function PlayPage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
       <div className="w-full max-w-5xl mx-auto">
         <header className="text-center mb-8">
-          <Link href="/">
+          <Link href="/vector-zen">
             <h1 className="font-headline text-5xl md:text-7xl font-bold text-primary">
               VectorZen
             </h1>
@@ -37,7 +37,7 @@ export default function PlayPage() {
             />
           </div>
           <div className="lg:col-span-1">
-            <Ranking />
+            <Ranking collectionName="userRanks" />
           </div>
         </div>
       </div>

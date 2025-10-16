@@ -15,7 +15,7 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
 import Link from 'next/link';
-import { Award } from 'lucide-react';
+import { Award, Home } from 'lucide-react';
 
 export default function AlgebraPage() {
     const [username, setUsername] = useState('');
@@ -135,6 +135,11 @@ export default function AlgebraPage() {
                         <Award className="w-24 h-24 text-yellow-500 animate-bounce" />
                         <h2 className="text-4xl font-bold font-headline mt-4">You're an Algebra Master!</h2>
                         <p className="text-muted-foreground mt-2">Final Score: {finalScore ?? score}</p>
+                         <Link href="/" passHref>
+                          <Button variant="outline" className="mt-6">
+                            <Home className="mr-2" /> Exit to Welcome Screen
+                          </Button>
+                        </Link>
                     </div>
                 )}
                 {isGameStarted ? (
