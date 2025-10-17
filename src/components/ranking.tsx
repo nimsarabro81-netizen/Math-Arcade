@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Award } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 type UserRank = {
   id: string;
   username: string;
+  avatar?: string;
   score: number;
 };
 
@@ -67,7 +69,10 @@ export function Ranking({ collectionName = 'userRanks', title = 'Leaderboard' }:
                     <Skeleton className="h-5 w-5 rounded-full" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-24" />
+                     <div className="flex items-center gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Skeleton className="h-4 w-12 ml-auto" />
@@ -82,7 +87,15 @@ export function Ranking({ collectionName = 'userRanks', title = 'Leaderboard' }:
                         {index < 3 ? <Award className={`w-6 h-6 ${getRankColor(index)}`} /> : <span className="text-muted-foreground">{index + 1}</span>}
                     </div>
                   </TableCell>
-                  <TableCell>{rank.username}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 font-medium">
+                        <Avatar className="w-8 h-8 border-2 border-background">
+                            <AvatarImage src={rank.avatar} alt={rank.username} />
+                            <AvatarFallback>{rank.username.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{rank.username}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right font-mono font-bold">{rank.score}</TableCell>
                 </TableRow>
               ))

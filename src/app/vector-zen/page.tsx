@@ -63,6 +63,7 @@ export default function VectorZenPage() {
       const rankData = {
         userId: user.uid,
         username: identity.username,
+        avatar: identity.avatar,
         score: finalScoreValue,
         lastUpdated: new Date().toISOString(),
       };

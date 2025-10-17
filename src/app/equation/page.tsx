@@ -54,6 +54,7 @@ export default function EquationPage() {
         const rankData = {
             userId: user.uid,
             username: identity.username,
+            avatar: identity.avatar,
             score: finalScoreValue,
             lastUpdated: new Date().toISOString(),
         };
