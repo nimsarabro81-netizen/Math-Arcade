@@ -17,7 +17,7 @@ const boyNames = ['Leo', 'Sam', 'Ethan', 'Jack', 'Finn'];
 const girlNames = ['Mia', 'Chloe', 'Ruby', 'Zara', 'Nora'];
 const allNames = [...boyNames, ...girlNames];
 
-const avatars = allNames.map(name => `https://i.pravatar.cc/150?u=${name}`);
+const avatars = allNames.map(name => `https://api.dicebear.com/8.x/micah/svg?seed=${name}`);
 
 interface ProfileCreatorProps {
   onProfileCreated: (username: string, avatar: string) => void;
