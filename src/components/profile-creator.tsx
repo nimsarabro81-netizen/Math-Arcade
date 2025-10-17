@@ -14,7 +14,8 @@ import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
 
 const avatarNames = ['Leo', 'Mia', 'Sam', 'Chloe', 'Ethan', 'Ruby', 'Jack', 'Zara', 'Finn', 'Nora'];
-const avatars = avatarNames.map(name => `https://api.dicebear.com/8.x/micah/svg?seed=${name}`);
+const smilingMouths = ['bigSmile', 'smile', 'smirk'];
+const avatars = avatarNames.map((name, index) => `https://api.dicebear.com/8.x/micah/svg?seed=${name}&mouth=${smilingMouths[index % smilingMouths.length]}`);
 
 
 interface ProfileCreatorProps {
