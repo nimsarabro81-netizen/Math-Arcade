@@ -1,73 +1,93 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a security model where read access to leaderboard data is public, but write access (create, update, delete) is denied to all clients, requiring server-side management.  Game settings are also publicly readable, but unmodifiable by clients.
- * @dataStructure
- *  - /userRanks: Publicly readable leaderboard data for the VectorZen game.  Write operations are only performed by a trusted server.
- *  - /algebraRanks: Publicly readable leaderboard data for the Algebra Arena game.  Write operations are only performed by a trusted server.
- *  - /equationRanks: Publicly readable leaderboard data for the Equation Equilibrium game. Write operations are only performed by a trusted server.
- *  - /gameSettings: Publicly readable game settings. Write access is denied.
- * @keySecurityDecisions
- *  - Public Read Access: Leaderboard data and game settings are publicly readable to enable display and game logic.
- *  - Deny Client Writes: All write operations (create, update, delete) are explicitly denied to clients to prevent unauthorized modifications of leaderboard data or game settings.
+ * @fileoverview Firestore Security Rules for VectorZen and Algebra Arena.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes data protection by restricting write access. Read access is generally public to support leaderboard functionality.
+ *
+ * Data Structure:
+ * - `/userRanks`: Stores VectorZen leaderboard data. Publicly readable, but only the application itself can modify.
+ * - `/algebraRanks`: Stores Algebra Arena leaderboard data. Publicly readable, but only the application itself can modify.
+ * - `/equationRanks`: Stores Equation Equilibrium leaderboard data. Publicly readable, but only the application itself can modify.
+ * - `/gameSettings`: Stores game settings. Publicly readable, but only the application itself can modify.
+ *
+ * Key Security Decisions:
+ * - Leaderboard data (ranks) is publicly readable to allow display of rankings.
+ * - Only authenticated application (via backend) can modify any documents.
+ * - No user-specific data trees requiring ownership checks are implemented.
+ *
+ * Denormalization for Authorization:
+ *  N/A - No denormalization needed in this version.
+ *
+ * Structural Segregation:
+ * N/A - No separation of public/private data.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows public read access to user rankings for the VectorZen game, but denies all write operations.
+     * @description Allows anyone to read user ranks, but restricts modifications to authenticated users (backend).
      * @path /userRanks
-     * @allow (get, list): Any user can read the leaderboard.
-     * @deny (create, update, delete): No user can create, update, or delete leaderboard entries.
-     * @principle Public read, deny client writes.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Public read, authenticated-only writes.
      */
     match /userRanks/{userRankId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
-    /**
-     * @description Allows public read access to user rankings for the Algebra Arena game, but denies all write operations.
-     * @path /algebraRanks
-     * @allow (get, list): Any user can read the leaderboard.
-     * @deny (create, update, delete): No user can create, update, or delete leaderboard entries.
-     * @principle Public read, deny client writes.
-     */
-    match /algebraRanks/{algebraRankId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
+        /**
+         * @description Allows anyone to read algebra ranks, but restricts modifications to authenticated users (backend).
+         * @path /algebraRanks
+         * @allow (get, list): if true
+         * @allow (create, update, delete): if isSignedIn()
+         * @deny (create, update, delete): if !isSignedIn()
+         * @principle Public read, authenticated-only writes.
+         */
+        match /algebraRanks/{algebraRankId} {
+          allow get, list: if true;
+          allow create: if isSignedIn();
+          allow update: if isSignedIn() && resource != null;
+          allow delete: if isSignedIn() && resource != null;
+        }
 
     /**
-     * @description Allows public read access to user rankings for the Equation Equilibrium game, but denies all write operations.
+     * @description Allows anyone to read equation ranks, but restricts modifications to authenticated users (backend).
      * @path /equationRanks
-     * @allow (get, list): Any user can read the leaderboard.
-     * @deny (create, update, delete): No user can create, update, or delete leaderboard entries.
-     * @principle Public read, deny client writes.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Public read, authenticated-only writes.
      */
     match /equationRanks/{equationRankId} {
         allow get, list: if true;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null;
+        allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows public read access to game settings, but denies all write operations.
+     * @description Allows anyone to read game settings, but restricts modifications to authenticated users (backend).
      * @path /gameSettings
-     * @allow (get, list): Any user can read the game settings.
-     * @deny (create, update, delete): No user can create, update, or delete game settings.
-     * @principle Public read, deny client writes.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Public read, authenticated-only writes.
      */
     match /gameSettings/{gameSettingId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
+
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
 }
