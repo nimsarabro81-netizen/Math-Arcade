@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'robohash.org',
+        hostname: 'api.dicebear.com',
         port: '',
         pathname: '/**',
       }
