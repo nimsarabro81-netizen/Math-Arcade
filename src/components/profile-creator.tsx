@@ -13,8 +13,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
 
-const avatarNames = ['Leo', 'Mia', 'Sam', 'Chloe', 'Ethan', 'Ruby', 'Jack', 'Zara', 'Finn', 'Nora'];
-const avatars = avatarNames.map(name => `https://api.dicebear.com/8.x/avataaars/svg?seed=${name}&mouth=smile`);
+const boyNames = ['Leo', 'Sam', 'Ethan', 'Jack', 'Finn'];
+const girlNames = ['Mia', 'Chloe', 'Ruby', 'Zara', 'Nora'];
+
+const boyAvatars = boyNames.map(name => `https://api.dicebear.com/8.x/avataaars/svg?seed=${name}&mouth=smile&top=shortHairTheCaesar,shortHairDooWop,shortHairShaggyMullet&facialHairChance=0`);
+const girlAvatars = girlNames.map(name => `https://api.dicebear.com/8.x/avataaars/svg?seed=${name}&mouth=smile&top=longHairBob,longHairStraight,longHairCurvy&facialHairChance=0`);
+const avatars = [...boyAvatars, ...girlAvatars];
 
 
 interface ProfileCreatorProps {
