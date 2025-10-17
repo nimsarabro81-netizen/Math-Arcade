@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useState } from 'react';
 import { ProfileCreator } from '@/components/profile-creator';
 import { usePlayerIdentity } from '@/hooks/use-player-identity';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 type GameSetting = {
   id: string;
@@ -79,6 +80,10 @@ export default function WelcomePage() {
           </h1>
            {identity ? (
              <div className="flex flex-col items-center gap-4 mt-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                <Avatar className="w-24 h-24 mb-4 border-4 border-primary/20 shadow-lg">
+                    <AvatarImage src={identity.avatar} alt={identity.username} />
+                    <AvatarFallback>{identity.username.charAt(0)}</AvatarFallback>
+                </Avatar>
                 <p className="text-lg md:text-xl text-muted-foreground">
                     Welcome, {identity.username}! Choose a game to play.
                 </p>
