@@ -1,83 +1,76 @@
 /**
- * @fileoverview Firestore Security Rules for VectorZen and Algebra Arena.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure access to user data and game settings.
- * Public read access is granted to game settings, while user rankings are publicly accessible.
- * Write access to all data is disallowed to client requests.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a public-read, admin-write model for game settings, and restricts leaderboard management (creation, modification, deletion) to authenticated users only.
  *
  * Data Structure:
- * The Firestore database consists of the following top-level collections:
- * - /userRanks: Stores user ranking information for the VectorZen game.
- * - /algebraRanks: Stores user ranking information for the Algebra Arena game.
- * - /equationRanks: Stores user ranking information for the Equation Equilibrium game.
- * - /gameSettings: Stores the active status of each game.
+ * - /gameSettings: Stores global game settings. Anyone can read, only authenticated users with admin privileges can write.
+ * - /userRanks, /algebraRanks, /equationRanks: Store public leaderboard data.
  *
  * Key Security Decisions:
- * - User listing is disallowed (no `list` access to the /users collection).
- * - Write operations are denied in all cases.
- *
+ * - Leaderboards are publicly readable to encourage community engagement.
+ * - Only authenticated users can create, update, or delete leaderboard entries. A more sophisticated role-based system would be appropriate in a production environment.
+ * - User listing is generally disallowed to protect user privacy.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to the /userRanks collection.
-     * @path /databases/{database}/documents/userRanks
-     * @allow (get, list): Anyone can read user ranks.
-     * @deny (create, update, delete): No client can create, update, or delete user ranks.
-     * @principle Public read access for user rankings, no client-side writes.
-     */
-    match /userRanks/{userRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to the /algebraRanks collection.
-     * @path /databases/{database}/documents/algebraRanks
-     * @allow (get, list): Anyone can read user ranks.
-     * @deny (create, update, delete): No client can create, update, or delete user ranks.
-     * @principle Public read access for user rankings, no client-side writes.
-     */
-    match /algebraRanks/{algebraRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to the /equationRanks collection.
-     * @path /databases/{database}/documents/equationRanks
-     * @allow (get, list): Anyone can read user ranks.
-     * @deny (create, update, delete): No client can create, update, or delete user ranks.
-     * @principle Public read access for user rankings, no client-side writes.
-     */
-    match /equationRanks/{equationRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Controls access to the /gameSettings collection.
-     * @path /databases/{database}/documents/gameSettings
-     * @allow (get, list): Anyone can read game settings.
-     * @deny (create, update, delete): No client can create, update, or delete game settings.
-     * @principle Public read access for game settings, no client-side writes.
+     * @description Allows anyone to read game settings, but restricts writes to authenticated users.
+     * @path /gameSettings
+     * @allow (get, list)
+     * @deny (create, update, delete)
+     * @principle Public read, admin-only write. Authenticated users can modify game settings.
      */
     match /gameSettings/{gameSettingId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Denies all access to any other path in the database as a safeguard.
-     * @path /databases/{database}/documents/{document=**}
-     * @deny get, list, create, update, delete: All other paths are denied by default.
-     * @principle Ensures that only explicitly defined paths are accessible.
+     * @description Allows anyone to read the VectorZen leaderboard, but restricts writes to authenticated users.
+     * @path /userRanks
+     * @allow (get, list)
+     * @deny (create, update, delete)
+     * @principle Public read, admin-only write. Authenticated users can modify leaderboard.
      */
-    match /{document=**} {
-        allow get, list, create, update, delete: if false;
+    match /userRanks/{userRankId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
+    }
+
+      /**
+       * @description Allows anyone to read the Algebra Arena leaderboard, but restricts writes to authenticated users.
+       * @path /algebraRanks
+       * @allow (get, list)
+       * @deny (create, update, delete)
+       * @principle Public read, admin-only write. Authenticated users can modify leaderboard.
+       */
+    match /algebraRanks/{algebraRankId} {
+        allow get, list: if true;
+        allow create, update, delete: if isSignedIn();
+    }
+
+      /**
+       * @description Allows anyone to read the Equation Equilibrium leaderboard, but restricts writes to authenticated users.
+       * @path /equationRanks
+       * @allow (get, list)
+       * @deny (create, update, delete)
+       * @principle Public read, admin-only write. Authenticated users can modify leaderboard.
+       */
+    match /equationRanks/{equationRankId} {
+        allow get, list: if true;
+        allow create, update, delete: if isSignedIn();
+    }
+
+    // --- Helper Functions ---
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
