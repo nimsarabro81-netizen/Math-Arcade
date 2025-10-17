@@ -3,7 +3,7 @@ import { Ranking } from '@/components/ranking';
 import { AdminControls } from '@/components/admin-controls';
 import { GameStatusControls } from '@/components/game-status-controls';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { OverallRanking } from '@/components/overall-ranking';
 
 export default function AdminPage() {
   return (
@@ -20,12 +20,18 @@ export default function AdminPage() {
 
         <GameStatusControls />
 
-        <Tabs defaultValue="vectorzen" className="w-full mt-8">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="overall" className="w-full mt-8">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overall">Overall</TabsTrigger>
             <TabsTrigger value="vectorzen">VectorZen</TabsTrigger>
             <TabsTrigger value="algebra">Algebra Arena</TabsTrigger>
             <TabsTrigger value="equation">Equation Equilibrium</TabsTrigger>
           </TabsList>
+          <TabsContent value="overall">
+            <section className="mt-6 space-y-4">
+              <OverallRanking />
+            </section>
+          </TabsContent>
           <TabsContent value="vectorzen">
             <section className="mt-6 space-y-4">
               <AdminControls collectionName="userRanks" leaderboardName="VectorZen Leaderboard" />
