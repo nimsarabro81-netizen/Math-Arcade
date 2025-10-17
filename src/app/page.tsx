@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Atom, Divide, Puzzle } from 'lucide-react';
+import { Atom, Divide, Puzzle, LogOut } from 'lucide-react';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -58,6 +58,10 @@ export default function WelcomePage() {
     setIdentity({ username, avatar });
   };
   
+  const handleLogout = () => {
+    setIdentity(null);
+  };
+  
   if (!isIdentityLoaded) {
     return (
         <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
@@ -74,9 +78,14 @@ export default function WelcomePage() {
             Math Arcade
           </h1>
            {identity ? (
-             <p className="mt-4 text-lg md:text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
-                Welcome, {identity.username}! Choose a game to play.
-             </p>
+             <div className="flex flex-col items-center gap-4 mt-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                <p className="text-lg md:text-xl text-muted-foreground">
+                    Welcome, {identity.username}! Choose a game to play.
+                </p>
+                <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" /> Change Profile
+                </Button>
+             </div>
            ) : (
              <p className="mt-4 text-lg md:text-xl text-muted-foreground animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 A collection of games to sharpen your mathematical mind.
