@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { RefreshCw, Trash2 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface AdminControlsProps {
@@ -32,54 +32,57 @@ export function AdminControls({ collectionName, leaderboardName }: AdminControls
         }
 
         setIsClearing(true);
-
         const ranksRef = collection(firestore, collectionName);
-        const querySnapshot = await getDocs(ranksRef).catch(error => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: ranksRef.path,
-                operation: 'list',
-            }));
-            return null;
-        });
 
-        if (!querySnapshot) {
-            setIsClearing(false);
-            return;
-        }
+        try {
+            const querySnapshot = await getDocs(ranksRef);
 
-        if (querySnapshot.empty) {
-            toast({
-                title: `${leaderboardName} is already empty.`,
-            });
-            setIsClearing(false);
-            return;
-        }
-
-        const batch = writeBatch(firestore);
-        querySnapshot.docs.forEach((doc) => {
-            batch.delete(doc.ref);
-        });
-
-        batch.commit()
-            .then(() => {
+            if (querySnapshot.empty) {
                 toast({
-                    title: 'Success!',
-                    description: `The ${leaderboardName} has been cleared.`,
+                    title: `${leaderboardName} is already empty.`,
                 });
-            })
-            .catch((error) => {
-                querySnapshot.docs.forEach((doc) => {
+                setIsClearing(false);
+                return;
+            }
+
+            // Delete documents one by one for more robust error handling
+            const deletePromises = querySnapshot.docs.map(document => {
+                const docRef = doc(firestore, collectionName, document.id);
+                return deleteDoc(docRef).catch(error => {
+                    // Emit a specific error for each failed deletion
                     errorEmitter.emit('permission-error', new FirestorePermissionError({
-                        path: doc.ref.path,
+                        path: docRef.path,
                         operation: 'delete',
                     }));
+                    // Throw the error to be caught by the outer catch block
+                    throw new Error(`Failed to delete document: ${document.id}`);
                 });
-            })
-            .finally(() => {
-                setIsClearing(false);
-                // We might need a way to force-refresh the leaderboards
-                window.location.reload(); 
             });
+
+            await Promise.all(deletePromises);
+
+            toast({
+                title: 'Success!',
+                description: `The ${leaderboardName} has been cleared.`,
+            });
+            // Force a refresh to show the cleared leaderboard
+            window.location.reload();
+
+        } catch (error) {
+            console.error("Error clearing leaderboard: ", error);
+            // A general error toast will be shown if any deletion fails
+            toast({
+                variant: 'destructive',
+                title: 'Error Clearing Leaderboard',
+                description: 'Could not clear all scores. Check permissions and try again.',
+            });
+             errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ranksRef.path,
+                operation: 'list', // The initial getDocs might be the issue
+            }));
+        } finally {
+            setIsClearing(false);
+        }
     };
     
     const handleRefresh = () => {
