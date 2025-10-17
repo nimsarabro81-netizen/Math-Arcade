@@ -15,11 +15,9 @@ import { Check, Loader2 } from 'lucide-react';
 
 const boyNames = ['Leo', 'Sam', 'Ethan', 'Jack', 'Finn'];
 const girlNames = ['Mia', 'Chloe', 'Ruby', 'Zara', 'Nora'];
+const allNames = [...boyNames, ...girlNames];
 
-const boyAvatars = boyNames.map(name => `https://api.dicebear.com/8.x/avataaars/svg?seed=${name}&mouth=smile&top=shortHairTheCaesar,shortHairDooWop,shortHairShaggyMullet&facialHairChance=0`);
-const girlAvatars = girlNames.map(name => `https://api.dicebear.com/8.x/avataaars/svg?seed=${name}&mouth=smile&top=longHairBob,longHairStraight,longHairCurvy&facialHairChance=0`);
-const avatars = [...boyAvatars, ...girlAvatars];
-
+const avatars = allNames.map(name => `https://i.pravatar.cc/150?u=${name}`);
 
 interface ProfileCreatorProps {
   onProfileCreated: (username: string, avatar: string) => void;
