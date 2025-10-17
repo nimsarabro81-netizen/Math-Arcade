@@ -7,10 +7,7 @@ import { VectorZen } from '@/components/vector-zen';
 import { MultiplicationZen } from '@/components/multiplication-zen';
 import { Ranking } from '@/components/ranking';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirebase } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
@@ -19,12 +16,15 @@ import { collection } from 'firebase/firestore';
 import { Award, Gamepad2, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePlayerIdentity } from '@/hooks/use-player-identity';
+import { useRouter } from 'next/navigation';
 
 export default function VectorZenPage() {
   const [gameMode, setGameMode] = useState<'addition' | 'multiplication'>('addition');
   
-  // Lifted state
-  const [username, setUsername] = useState('');
+  const { identity, isIdentityLoaded } = usePlayerIdentity();
+  const router = useRouter();
+
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [score, setScore] = useState(100);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -40,6 +40,15 @@ export default function VectorZenPage() {
   const auth = useAuth();
 
   useEffect(() => {
+    if (isIdentityLoaded && !identity) {
+      router.push('/');
+    } else if (identity) {
+      setIsGameStarted(true);
+      setStartTime(Date.now());
+    }
+  }, [identity, isIdentityLoaded, router]);
+
+  useEffect(() => {
     if (!user) {
       initiateAnonymousSignIn(auth);
     }
@@ -50,31 +59,18 @@ export default function VectorZenPage() {
   };
   
   const saveScore = useCallback((finalScoreValue: number) => {
-    if (user && firestore) {
+    if (user && firestore && identity) {
       const rankData = {
         userId: user.uid,
-        username: username || 'Anonymous',
+        username: identity.username,
         score: finalScoreValue,
         lastUpdated: new Date().toISOString(),
       };
       const ranksCollection = collection(firestore, 'userRanks');
       addDocumentNonBlocking(ranksCollection, rankData);
     }
-  }, [user, firestore, username]);
+  }, [user, firestore, identity]);
 
-  const handleStartGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (username.trim()) {
-      setIsGameStarted(true);
-      setStartTime(Date.now());
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Name required',
-        description: 'Please enter your name to start.',
-      });
-    }
-  };
 
   const handleGameCompletion = (game: 'addition' | 'multiplication') => {
     if (game === 'addition') setAdditionComplete(true);
@@ -105,47 +101,17 @@ export default function VectorZenPage() {
       });
     }
   }, [finalScore, startTime, toast]);
-  
-  const startOver = () => {
-    setIsGameStarted(false);
-    setUsername('');
-    setScore(100);
-    setStartTime(null);
-    setAdditionComplete(false);
-    setMultiplicationComplete(false);
-    setFinalScore(null);
+
+  if (!isIdentityLoaded || !identity) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
+        <p>Loading or redirecting...</p>
+      </main>
+    );
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
-       <Dialog open={!isGameStarted} onOpenChange={(isOpen) => !isOpen && isGameStarted && setIsGameStarted(true)}>
-        <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
-          <form onSubmit={handleStartGame}>
-            <DialogHeader>
-              <DialogTitle>Welcome to VectorZen</DialogTitle>
-              <DialogDescription>Enter your name to appear on the leaderboard.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="col-span-3"
-                  placeholder="Your Name"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit">Start Game</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-      
       <div className="w-full max-w-5xl mx-auto">
         <header className="text-center mb-8">
          <Link href="/">
@@ -179,7 +145,7 @@ export default function VectorZenPage() {
               <TabsContent value="addition">
                 <VectorZen
                     isGameStarted={isGameStarted}
-                    username={username}
+                    username={identity.username}
                     score={score}
                     onScoreChange={handleScoreChange}
                     onGameComplete={() => handleGameCompletion('addition')}
