@@ -37,9 +37,16 @@ export default function RootLayout({
         />
       </head>
       <body className={cn('font-body antialiased', fontBody.variable, fontHeadline.variable)}>
-        <FirebaseClientProvider>
-          {children}
-        </FirebaseClientProvider>
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-grow">
+            <FirebaseClientProvider>
+              {children}
+            </FirebaseClientProvider>
+          </main>
+          <footer className="w-full text-center p-4 bg-background text-muted-foreground text-sm">
+            <p>&copy; {new Date().getFullYear()} Yasiru Rajapaksha. All rights reserved.</p>
+          </footer>
+        </div>
         <Toaster />
       </body>
     </html>
