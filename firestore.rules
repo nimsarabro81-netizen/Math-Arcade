@@ -1,71 +1,114 @@
 /**
- * @file Firestore Security Rules for VectorZen and Algebra Arena.
+ * @fileoverview Firestore Security Rules for VectorZen and associated games.
  *
- * @corePhilosophy:
- *   This ruleset prioritizes public read access for game settings and user rankings,
- *   while restricting write access to prevent unauthorized modifications.
- *   It allows listing of game settings and user ranks. There is no user-specific data.
+ * Core Philosophy:
+ * This ruleset prioritizes security by enforcing strict ownership for user-specific data and
+ * restricting unauthorized access to sensitive information.  It allows public read access to the rank data,
+ * but restricts modification to only authenticated users, and ensures that the `userId` field
+ * matches the authenticated user's UID.
  *
- * @dataStructure:
- *   - /gameSettings: Stores global game settings, readable by all, writable by none.
- *   - /userRanks: Stores user rankings for VectorZen, readable by all, writable by none.
- *   - /algebraRanks: Stores user rankings for Algebra Arena, readable by all, writable by none.
- *   - /equationRanks: Stores user rankings for Equation Equilibrium, readable by all, writable by none.
+ * Data Structure:
+ * - /userRanks: Stores ranking data for the VectorZen game. Publicly readable, owner-writeable.
+ * - /algebraRanks: Stores ranking data for the Algebra Arena game. Publicly readable, owner-writeable.
+ * - /equationRanks: Stores ranking data for the Equation Equilibrium game. Publicly readable, owner-writeable.
+ * - /gameSettings: Stores game settings. Publicly readable, but only writeable by server.
  *
- * @keySecurityDecisions:
- *   - User listing is implicitly allowed due to the public nature of the ranking data.
- *   - Write operations are universally denied to prevent unauthorized data manipulation.
+ * Key Security Decisions:
+ * - Public read access for rank collections, enabling display of leaderboards.
+ * - Owner-only writes for rank collections, ensuring data integrity.
+ * - Server-only access for game settings.
+ *
+ * Denormalization for Authorization:
+ * - The `userId` field within the rank documents is used to ensure that only the authenticated user can
+ *   modify their own ranking data. This avoids costly `get()` operations to a separate user document.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read the active status of games. Write access is denied.
-     * @path /gameSettings
-     * @allow (get, list): Any user can read game settings.
-     * @deny (create, update, delete): No one can create, update, or delete game settings.
-     * @principle Allows public read access to game settings; denies all write operations.
-     */
-    match /gameSettings/{gameSettingId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows anyone to read user rankings for VectorZen. Write access is denied.
+     * @description Grants public read access and owner-only write access to the userRanks collection.
      * @path /userRanks
-     * @allow (get, list): Any user can read VectorZen user ranks.
-     * @deny (create, update, delete): No one can create, update, or delete VectorZen user ranks.
-     * @principle Allows public read access to user ranking data; denies all write operations.
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+     * @allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+     * @allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+     * @deny create: if request.auth == null;
+     * @deny update: if !isExistingOwner(resource.data.userId);
+     * @deny delete: if !isExistingOwner(resource.data.userId);
+     * @principle Allows public reads, restricts writes to the owner of the document.
      */
     match /userRanks/{userRankId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.userId);
+      allow delete: if isExistingOwner(resource.data.userId);
     }
 
-    /**
-     * @description Allows anyone to read user rankings for Algebra Arena. Write access is denied.
-     * @path /algebraRanks
-     * @allow (get, list): Any user can read Algebra Arena user ranks.
-     * @deny (create, update, delete): No one can create, update, or delete Algebra Arena user ranks.
-     * @principle Allows public read access to user ranking data; denies all write operations.
-     */
+        /**
+         * @description Grants public read access and owner-only write access to the algebraRanks collection.
+         * @path /algebraRanks
+         * @allow get, list: if true;
+         * @allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+         * @allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+         * @allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+         * @deny create: if request.auth == null;
+         * @deny update: if !isExistingOwner(resource.data.userId);
+         * @deny delete: if !isExistingOwner(resource.data.userId);
+         * @principle Allows public reads, restricts writes to the owner of the document.
+         */
     match /algebraRanks/{algebraRankId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.userId);
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+
+        /**
+         * @description Grants public read access and owner-only write access to the equationRanks collection.
+         * @path /equationRanks
+         * @allow get, list: if true;
+         * @allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+         * @allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+         * @allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+         * @deny create: if request.auth == null;
+         * @deny update: if !isExistingOwner(resource.data.userId);
+         * @deny delete: if !isExistingOwner(resource.data.userId);
+         * @principle Allows public reads, restricts writes to the owner of the document.
+         */
+    match /equationRanks/{equationRankId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.userId);
+      allow delete: if isExistingOwner(resource.data.userId);
     }
 
     /**
-     * @description Allows anyone to read user rankings for Equation Equilibrium. Write access is denied.
-     * @path /equationRanks
-     * @allow (get, list): Any user can read Equation Equilibrium user ranks.
-     * @deny (create, update, delete): No one can create, update, or delete Equation Equilibrium user ranks.
-     * @principle Allows public read access to user ranking data; denies all write operations.
+     * @description Grants public read access to the gameSettings collection, but denies all writes.
+     *              This collection should only be modified by a trusted server environment.
+     * @path /gameSettings
+     * @allow get, list: if true;
+     * @deny create, update, delete: if true;
+     * @principle Restricts write access to the gameSettings collection to prevent unauthorized modifications.
      */
-    match /equationRanks/{equationRankId} {
+    match /gameSettings/{gameSettingId} {
       allow get, list: if true;
-      allow create, update, delete: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
     }
   }
 }
