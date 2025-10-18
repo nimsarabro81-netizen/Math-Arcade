@@ -6,7 +6,7 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Atom, Puzzle, Divide } from 'lucide-react';
+import { Users, Atom, Puzzle, Divide, Sigma } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -18,10 +18,11 @@ type UserRank = {
   score: number;
 };
 
-type UserWithGames = {
+type UserSummary = {
     userId: string;
     username: string;
     avatar?: string;
+    totalScore: number;
     gamesPlayed: {
         vectorZen: number;
         algebra: number;
@@ -58,20 +59,22 @@ export function AllUsers() {
       return [];
     }
 
-    const userMap = new Map<string, UserWithGames>();
+    const userMap = new Map<string, UserSummary>();
 
-    const processRanks = (ranks: UserRank[], game: keyof UserWithGames['gamesPlayed']) => {
+    const processRanks = (ranks: UserRank[], game: keyof UserSummary['gamesPlayed']) => {
       ranks.forEach(rank => {
         if (!userMap.has(rank.userId)) {
           userMap.set(rank.userId, {
             userId: rank.userId,
             username: rank.username,
             avatar: rank.avatar,
+            totalScore: 0,
             gamesPlayed: { vectorZen: 0, algebra: 0, equation: 0 }
           });
         }
         const user = userMap.get(rank.userId)!;
         user.gamesPlayed[game]++;
+        user.totalScore += rank.score;
         if (rank.avatar && !user.avatar) {
             user.avatar = rank.avatar;
         }
@@ -82,7 +85,7 @@ export function AllUsers() {
     processRanks(algebraRanks, 'algebra');
     processRanks(equationRanks, 'equation');
 
-    return Array.from(userMap.values()).sort((a, b) => a.username.localeCompare(b.username));
+    return Array.from(userMap.values()).sort((a, b) => b.totalScore - a.totalScore);
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
 
   return (
@@ -91,13 +94,14 @@ export function AllUsers() {
         <CardTitle className="text-center font-headline text-3xl font-bold flex items-center justify-center gap-2">
           <Users /> All Players
         </CardTitle>
-        <CardDescription className="text-center">A list of all unique players and the games they've played.</CardDescription>
+        <CardDescription className="text-center">A list of all unique players, their total score, and the games they've played.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Player</TableHead>
+              <TableHead className="text-center">Total Score</TableHead>
               <TableHead className="text-center">Games Played</TableHead>
             </TableRow>
           </TableHeader>
@@ -110,6 +114,9 @@ export function AllUsers() {
                       <Skeleton className="h-8 w-8 rounded-full" />
                       <Skeleton className="h-4 w-24" />
                     </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Skeleton className="h-4 w-12 mx-auto" />
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center gap-2">
@@ -132,6 +139,7 @@ export function AllUsers() {
                       <span>{user.username}</span>
                     </div>
                   </TableCell>
+                  <TableCell className="text-center font-mono font-bold text-lg">{user.totalScore}</TableCell>
                   <TableCell>
                     <div className="flex justify-center items-center gap-2 flex-wrap">
                         {user.gamesPlayed.vectorZen > 0 && 
@@ -159,7 +167,7 @@ export function AllUsers() {
             ) : (
               !isLoading && (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center h-24">
+                  <TableCell colSpan={3} className="text-center h-24">
                     No users found.
                   </TableCell>
                 </TableRow>
