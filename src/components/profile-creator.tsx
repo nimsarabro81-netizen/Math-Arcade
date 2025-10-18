@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { Check, Loader2 } from 'lucide-react';
 
-const allNames = ['Leo', 'Mia', 'Sam', 'Chloe', 'Ethan', 'Ruby', 'Jack', 'Zara', 'Finn', 'Nora'];
+const allNames = ['Apple', 'Banana', 'Orange', 'Strawberry', 'Grapes', 'Cherry', 'Pineapple', 'Watermelon', 'Kiwi', 'Lemon'];
 
 const avatars = allNames.map(name => `https://api.dicebear.com/8.x/micah/svg?seed=${name}`);
 
