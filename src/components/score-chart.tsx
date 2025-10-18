@@ -6,8 +6,8 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { BarChart3 } from 'lucide-react';
+import { BarChart as BarChartIcon, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 type UserRank = {
   userId: string;
@@ -15,7 +15,7 @@ type UserRank = {
   score: number;
 };
 
-const MIN_WIDTH_PER_PLAYER = 60; // 60px per player
+const MIN_WIDTH_PER_PLAYER = 80; // 80px per player for better spacing with bars
 
 export function ScoreChart() {
   const { firestore } = useFirebase();
@@ -75,7 +75,7 @@ export function ScoreChart() {
     <Card className="shadow-lg h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline text-3xl font-bold">
-          <BarChart3 /> Player Score Distribution
+          <BarChartIcon /> Player Score Distribution
         </CardTitle>
         <CardDescription>A look at scores across all games. Use the scrollbar to see all players.</CardDescription>
       </CardHeader>
@@ -85,21 +85,7 @@ export function ScoreChart() {
              <div className="h-[350px] w-full overflow-x-auto">
                 <div style={{ width: Math.max(chartMinWidth, 500), height: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 60 }}>
-                            <defs>
-                                <linearGradient id="colorVectorZen" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorAlgebra" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
-                                </linearGradient>
-                                <linearGradient id="colorEquation" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
-                                    <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
+                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 60 }}>
                             <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip
@@ -112,10 +98,10 @@ export function ScoreChart() {
                                 }}
                             />
                             <Legend wrapperStyle={{fontSize: "14px", paddingTop: '20px'}} />
-                            <Area type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" fill="url(#colorVectorZen)" strokeWidth={2} />
-                            <Area type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" fill="url(#colorAlgebra)" strokeWidth={2} />
-                            <Area type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" fill="url(#colorEquation)" strokeWidth={2} />
-                        </AreaChart>
+                            <Bar dataKey="VectorZen" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="Algebra Arena" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="Equation Equilibrium" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
                     </ResponsiveContainer>
                 </div>
              </div>
