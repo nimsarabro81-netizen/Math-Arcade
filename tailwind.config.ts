@@ -107,12 +107,12 @@ export default {
         },
         'bounce': {
           '0%, 100%': {
-            transform: 'translateY(-25%)',
-            animationTimingFunction: 'cubic-bezier(0.8, 0, 1, 1)',
+            transform: 'translateY(-5%)',
+            animationTimingFunction: 'ease-in-out',
           },
           '50%': {
-            transform: 'translateY(0)',
-            animationTimingFunction: 'cubic-bezier(0, 0, 0.2, 1)',
+            transform: 'translateY(5%)',
+            animationTimingFunction: 'ease-in-out',
           },
         },
         'fade-out-zero': {
@@ -127,7 +127,7 @@ export default {
         'ball-out': 'ball-out 0.4s ease-in forwards',
         'pop': 'pop 0.3s ease-out',
         'fade-in': 'fade-in 0.5s ease-in-out',
-        'bounce': 'bounce 2s infinite',
+        'bounce': 'bounce 3s infinite',
         'fade-out-zero': 'fade-out-zero 0.5s ease-in-out forwards',
       },
        backgroundImage: {
