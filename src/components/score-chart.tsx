@@ -6,7 +6,7 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 
 type UserRank = {
@@ -64,7 +64,7 @@ export function ScoreChart() {
       VectorZen: data.vectorZen || 0,
       "Algebra Arena": data.algebra || 0,
       "Equation Equilibrium": data.equation || 0,
-    }));
+    })).sort((a,b) => a.username.localeCompare(b.username));
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
 
   return (
@@ -73,17 +73,18 @@ export function ScoreChart() {
         <CardTitle className="flex items-center gap-2 font-headline text-3xl font-bold">
           <BarChart3 /> Player Score Distribution
         </CardTitle>
-        <CardDescription>A look at scores across all games.</CardDescription>
+        <CardDescription>A look at scores across all games. Drag the slider to see more players.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading && <Skeleton className="h-[350px] w-full" />}
         {!isLoading && chartData.length > 0 && (
              <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={60} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip
+                            cursor={{fill: 'hsl(var(--muted))'}}
                             contentStyle={{
                                 background: "hsl(var(--background))",
                                 border: "1px solid hsl(var(--border))",
@@ -91,10 +92,11 @@ export function ScoreChart() {
                             }}
                         />
                         <Legend wrapperStyle={{fontSize: "14px"}} />
-                        <Line type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{r: 4}} />
-                        <Line type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{r: 4}} />
-                        <Line type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" strokeWidth={2} dot={{r: 4}} />
-                    </LineChart>
+                        <Bar dataKey="VectorZen" stackId="a" fill="hsl(var(--chart-1))" />
+                        <Bar dataKey="Algebra Arena" stackId="a" fill="hsl(var(--chart-2))" />
+                        <Bar dataKey="Equation Equilibrium" stackId="a" fill="hsl(var(--chart-3))" />
+                        <Brush dataKey="username" height={30} stroke="hsl(var(--primary))" travellerWidth={20} />
+                    </BarChart>
                 </ResponsiveContainer>
              </div>
         )}
