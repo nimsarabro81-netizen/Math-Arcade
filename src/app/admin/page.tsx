@@ -12,8 +12,9 @@ import { GameStatusControls } from '@/components/game-status-controls';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Podium } from '@/components/podium';
 import { ScoreChart } from '@/components/score-chart';
-import { LogOut } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react';
 import { AllUsers } from '@/components/all-users';
+import Link from 'next/link';
 
 const ADMIN_EMAIL = "nimsarabro81@gmail.com";
 
@@ -26,9 +27,9 @@ export default function AdminPage() {
     if (isUserLoading) {
       return; // Wait until user status is resolved
     }
-    // If not loading, and user is not logged in OR is not the admin, redirect
-    if (!user || user.email !== ADMIN_EMAIL) {
-      router.push('/');
+    // If not loading, and user is not logged in, redirect to login
+    if (!user) {
+      router.push('/login');
     }
   }, [user, isUserLoading, router]);
 
@@ -42,13 +43,35 @@ export default function AdminPage() {
   };
 
   // Show a loading/redirecting message while we verify the user
-  if (isUserLoading || !user || user.email !== ADMIN_EMAIL) {
+  if (isUserLoading || !user) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
         <p>Verifying access...</p>
       </main>
     );
   }
+
+  // If the user is logged in but is not the admin, show a restricted access message
+  if (user.email !== ADMIN_EMAIL) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
+        <div className="text-center">
+            <h1 className="font-headline text-4xl md:text-6xl font-bold text-destructive mb-4">
+                Access Denied
+            </h1>
+            <p className="text-lg text-muted-foreground mb-6">
+                You do not have permission to view this page.
+            </p>
+             <Link href="/login" passHref>
+                <Button>
+                    <LogIn className="mr-2 h-4 w-4" /> Go to Admin Login
+                </Button>
+            </Link>
+        </div>
+      </main>
+    );
+  }
+
 
   // If user is verified as admin, show the admin panel
   return (
