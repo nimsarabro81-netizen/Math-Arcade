@@ -161,19 +161,6 @@ export default function VectorZenPage() {
                 />
               </TabsContent>
             </Tabs>
-            <Card className="mt-4">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Gamepad2 /> More Games</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                    <Link href="/algebra">
-                        <Button variant="outline">Algebra Arena</Button>
-                    </Link>
-                    <Link href="/equation">
-                        <Button variant="outline">Equation Equilibrium</Button>
-                    </Link>
-                </CardContent>
-            </Card>
           </div>
           <div className="lg:col-span-1">
              <Card>
