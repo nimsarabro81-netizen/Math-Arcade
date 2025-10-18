@@ -1,14 +1,15 @@
 
-"use client";
+'use client';
 
 import { useMemo } from 'react';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Award, Trophy } from 'lucide-react';
+import { Trophy, Atom, Puzzle, Divide } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 type UserRank = {
   id: string;
@@ -16,6 +17,17 @@ type UserRank = {
   username: string;
   avatar?: string;
   score: number;
+};
+
+type TopPlayer = {
+  username: string;
+  avatar?: string;
+  totalScore: number;
+  scores: {
+    vectorZen: number;
+    algebra: number;
+    equation: number;
+  };
 };
 
 export function Podium() {
@@ -42,26 +54,34 @@ export function Podium() {
 
   const isLoading = loadingVector || loadingAlgebra || loadingEquation;
 
-  const topThree = useMemo(() => {
+  const topPlayers = useMemo(() => {
     if (isLoading || !vectorZenRanks || !algebraRanks || !equationRanks) {
       return [];
     }
 
-    const allScores: { [userId: string]: { username: string; avatar?: string; totalScore: number } } = {};
+    const allScores: { [userId: string]: { username: string; avatar?: string; totalScore: number; scores: { vectorZen: number; algebra: number; equation: number; } } } = {};
 
-    const processRanks = (ranks: UserRank[]) => {
+    const processRanks = (ranks: UserRank[], game: keyof TopPlayer['scores']) => {
       ranks.forEach(rank => {
         if (!allScores[rank.userId]) {
-          allScores[rank.userId] = { username: rank.username, avatar: rank.avatar, totalScore: 0 };
+          allScores[rank.userId] = {
+            username: rank.username,
+            avatar: rank.avatar,
+            totalScore: 0,
+            scores: { vectorZen: 0, algebra: 0, equation: 0 }
+          };
         }
         allScores[rank.userId].totalScore += rank.score;
-        if(rank.avatar) allScores[rank.userId].avatar = rank.avatar;
+        allScores[rank.userId].scores[game] += rank.score;
+        if (rank.avatar && !allScores[rank.userId].avatar) {
+          allScores[rank.userId].avatar = rank.avatar;
+        }
       });
     };
 
-    processRanks(vectorZenRanks);
-    processRanks(algebraRanks);
-    processRanks(equationRanks);
+    processRanks(vectorZenRanks, 'vectorZen');
+    processRanks(algebraRanks, 'algebra');
+    processRanks(equationRanks, 'equation');
 
     return Object.values(allScores)
       .sort((a, b) => b.totalScore - a.totalScore)
@@ -70,21 +90,12 @@ export function Podium() {
 
   const getPodiumCardClass = (index: number) => {
     switch (index) {
-      case 0: return 'border-yellow-500 bg-yellow-500/10 order-1 lg:order-2 -translate-y-6';
-      case 1: return 'border-gray-400 bg-gray-400/10 order-2 lg:order-1';
-      case 2: return 'border-yellow-700 bg-yellow-700/10 order-3 lg:order-3';
+      case 0: return 'border-yellow-500 bg-yellow-500/10';
+      case 1: return 'border-gray-400 bg-gray-400/10';
+      case 2: return 'border-yellow-700 bg-yellow-700/10';
       default: return '';
     }
   };
-
-  const getTrophyColor = (index: number) => {
-    switch (index) {
-        case 0: return 'text-yellow-500';
-        case 1: return 'text-gray-400';
-        case 2: return 'text-yellow-700';
-        default: return '';
-    }
-  }
 
   return (
     <Card className="shadow-lg h-full">
@@ -95,31 +106,50 @@ export function Podium() {
       </CardHeader>
       <CardContent className="pt-8">
         {isLoading && (
-            <div className="flex justify-around items-end h-64">
-                <Skeleton className="w-32 h-48" />
-                <Skeleton className="w-32 h-56" />
-                <Skeleton className="w-32 h-40" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="w-full h-32" />
+                <Skeleton className="w-full h-32" />
+                <Skeleton className="w-full h-32" />
             </div>
         )}
-        {!isLoading && topThree.length > 0 && (
-             <div className="grid grid-cols-1 lg:grid-cols-3 items-end gap-4 text-center">
-                {topThree.map((player, index) => (
-                    <div key={player.username} className={cn("flex flex-col items-center", index === 0 ? 'order-1 lg:order-2 animate-bounce' : (index === 1 ? 'order-2 lg:order-1' : 'order-3'))}>
-                         <Card className={cn("p-4 w-full transform transition-transform hover:scale-105", getPodiumCardClass(index))}>
-                            <Award className={cn("w-10 h-10 mx-auto mb-2", getTrophyColor(index))} />
-                            <Avatar className="w-20 h-20 mx-auto mb-2 border-4 border-background">
-                                <AvatarImage src={player.avatar} alt={player.username} />
-                                <AvatarFallback>{player.username.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <p className="font-bold text-lg truncate">{player.username}</p>
-                            <p className="font-mono text-2xl font-extrabold text-primary">{player.totalScore}</p>
-                            <p className="text-sm font-medium text-muted-foreground">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : 'rd'} Place</p>
+        {!isLoading && topPlayers.length > 0 && (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {topPlayers.map((player, index) => (
+                    <div key={player.username} className={cn("group", index === 0 ? 'md:col-span-2' : '')}>
+                         <Card className={cn("p-4 w-full transform transition-all duration-300 overflow-hidden", getPodiumCardClass(index))}>
+                            <div className="flex items-center transition-all duration-500 ease-in-out">
+                               <div className="flex-shrink-0 w-0 opacity-0 group-hover:w-1/2 group-hover:opacity-100 transition-all duration-500 ease-in-out space-y-2">
+                                  <h4 className="font-bold text-sm mb-2 text-left">Score Card</h4>
+                                   <div className='flex items-center justify-between text-xs'>
+                                      <Badge variant="outline" className="gap-1.5 font-mono"><Atom className="h-3 w-3 text-primary"/> VectorZen</Badge>
+                                      <span className="font-bold">{player.scores.vectorZen}</span>
+                                   </div>
+                                   <div className='flex items-center justify-between text-xs'>
+                                      <Badge variant="outline" className="gap-1.5 font-mono"><Puzzle className="h-3 w-3 text-primary"/> Algebra</Badge>
+                                      <span className="font-bold">{player.scores.algebra}</span>
+                                   </div>
+                                    <div className='flex items-center justify-between text-xs'>
+                                      <Badge variant="outline" className="gap-1.5 font-mono"><Divide className="h-3 w-3 text-primary"/> Equation</Badge>
+                                      <span className="font-bold">{player.scores.equation}</span>
+                                   </div>
+                               </div>
+
+                               <div className="w-full group-hover:w-1/2 transition-all duration-500 ease-in-out flex flex-col items-center text-center">
+                                    <Avatar className="w-16 h-16 mb-2 border-4 border-background">
+                                        <AvatarImage src={player.avatar} alt={player.username} />
+                                        <AvatarFallback>{player.username.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <p className="font-bold text-lg truncate">{player.username}</p>
+                                    <p className="font-mono text-2xl font-extrabold text-primary">{player.totalScore}</p>
+                                    <p className="text-sm font-medium text-muted-foreground">{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : 'rd'} Place</p>
+                                </div>
+                            </div>
                         </Card>
                     </div>
                 ))}
              </div>
         )}
-        {!isLoading && topThree.length === 0 && (
+        {!isLoading && topPlayers.length === 0 && (
             <div className="text-center text-muted-foreground py-10">
                 No players on the podium yet.
             </div>
