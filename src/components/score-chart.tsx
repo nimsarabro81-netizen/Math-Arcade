@@ -6,7 +6,7 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 
 type UserRank = {
@@ -85,7 +85,21 @@ export function ScoreChart() {
              <div className="h-[350px] w-full overflow-x-auto">
                 <div style={{ width: Math.max(chartMinWidth, 500), height: '100%' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 60 }}>
+                        <AreaChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 60 }}>
+                            <defs>
+                                <linearGradient id="colorVectorZen" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorAlgebra" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorEquation" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="hsl(var(--chart-3))" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="hsl(var(--chart-3))" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
                             <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip
@@ -94,13 +108,14 @@ export function ScoreChart() {
                                     background: "hsl(var(--background))",
                                     border: "1px solid hsl(var(--border))",
                                     borderRadius: "var(--radius)",
+                                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
                                 }}
                             />
-                            <Legend wrapperStyle={{fontSize: "14px"}} />
-                            <Line type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" dot={false} />
-                            <Line type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" dot={false} />
-                            <Line type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" dot={false} />
-                        </LineChart>
+                            <Legend wrapperStyle={{fontSize: "14px", paddingTop: '20px'}} />
+                            <Area type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" fill="url(#colorVectorZen)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" fill="url(#colorAlgebra)" strokeWidth={2} />
+                            <Area type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" fill="url(#colorEquation)" strokeWidth={2} />
+                        </AreaChart>
                     </ResponsiveContainer>
                 </div>
              </div>
