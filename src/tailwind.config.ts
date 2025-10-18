@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -134,7 +135,7 @@ export default {
         'ball-out': 'ball-out 0.4s ease-in forwards',
         'pop': 'pop 0.3s ease-out',
         'fade-in': 'fade-in 0.5s ease-in-out',
-        'bounce': 'bounce 1s infinite',
+        'bounce': 'bounce 2s infinite',
         'fade-out-zero': 'fade-out-zero 0.5s ease-in-out forwards',
         'pair-annihilate-1': 'pair-annihilate-1 0.4s ease-in-out forwards',
         'pair-annihilate-2': 'pair-annihilate-2 0.4s ease-in-out forwards',
@@ -149,5 +150,3 @@ export default {
   },
   plugins: [require('tailwindcss-animate')],
 } satisfies Config;
-
-    
