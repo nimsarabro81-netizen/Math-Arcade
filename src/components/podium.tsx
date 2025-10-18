@@ -104,7 +104,7 @@ export function Podium() {
         {!isLoading && topThree.length > 0 && (
              <div className="grid grid-cols-1 lg:grid-cols-3 items-end gap-4 text-center">
                 {topThree.map((player, index) => (
-                    <div key={player.username} className={cn("flex flex-col items-center", index === 0 ? 'order-1 lg:order-2' : (index === 1 ? 'order-2 lg:order-1' : 'order-3'))}>
+                    <div key={player.username} className={cn("flex flex-col items-center", index === 0 ? 'order-1 lg:order-2 animate-bounce' : (index === 1 ? 'order-2 lg:order-1' : 'order-3'))}>
                          <Card className={cn("p-4 w-full transform transition-transform hover:scale-105", getPodiumCardClass(index))}>
                             <Award className={cn("w-10 h-10 mx-auto mb-2", getTrophyColor(index))} />
                             <Avatar className="w-20 h-20 mx-auto mb-2 border-4 border-background">
