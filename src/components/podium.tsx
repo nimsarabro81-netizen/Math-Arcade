@@ -93,7 +93,7 @@ export function Podium() {
           <Trophy /> Top Champions
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-8">
         {isLoading && (
             <div className="flex justify-around items-end h-64">
                 <Skeleton className="w-32 h-48" />
