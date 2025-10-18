@@ -107,16 +107,20 @@ export function Podium() {
       <CardContent className="pt-8">
         {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Skeleton className="w-full h-32" />
+                <Skeleton className="w-full h-32 md:col-span-2" />
                 <Skeleton className="w-full h-32" />
                 <Skeleton className="w-full h-32" />
             </div>
         )}
         {!isLoading && topPlayers.length > 0 && (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 justify-items-center">
                 {topPlayers.map((player, index) => (
-                    <div key={player.username} className={cn("group", index === 0 ? 'md:col-span-2' : '')}>
-                         <Card className={cn("p-4 w-full transform transition-all duration-300 overflow-hidden", getPodiumCardClass(index))}>
+                    <div key={player.username} className={cn("group w-full", index === 0 ? 'md:col-span-2 max-w-lg' : 'max-w-sm')}>
+                         <Card className={cn(
+                           "p-4 w-full transform transition-all duration-300 overflow-hidden", 
+                           getPodiumCardClass(index),
+                           index === 0 && 'group-hover:pl-8'
+                          )}>
                             <div className="flex items-center transition-all duration-500 ease-in-out">
                                <div className="flex-shrink-0 w-0 opacity-0 group-hover:w-1/2 group-hover:opacity-100 transition-all duration-500 ease-in-out space-y-2">
                                   <h4 className="font-bold text-sm mb-2 text-left">Score Card</h4>
