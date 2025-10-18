@@ -1,20 +1,33 @@
 
-"use client";
+'use client';
 
 import { useMemo } from 'react';
 import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users } from 'lucide-react';
+import { Users, Atom, Puzzle, Divide } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
 
-type UserProfile = {
+type UserRank = {
   userId: string;
   username: string;
   avatar?: string;
+  score: number;
 };
+
+type UserWithGames = {
+    userId: string;
+    username: string;
+    avatar?: string;
+    gamesPlayed: {
+        vectorZen: number;
+        algebra: number;
+        equation: number;
+    }
+}
 
 export function AllUsers() {
   const { firestore } = useFirebase();
@@ -34,9 +47,9 @@ export function AllUsers() {
     return query(collection(firestore, 'equationRanks'));
   }, [firestore]);
 
-  const { data: vectorZenRanks, isLoading: loadingVector } = useCollection<UserProfile>(userRanksQuery);
-  const { data: algebraRanks, isLoading: loadingAlgebra } = useCollection<UserProfile>(algebraRanksQuery);
-  const { data: equationRanks, isLoading: loadingEquation } = useCollection<UserProfile>(equationRanksQuery);
+  const { data: vectorZenRanks, isLoading: loadingVector } = useCollection<UserRank>(userRanksQuery);
+  const { data: algebraRanks, isLoading: loadingAlgebra } = useCollection<UserRank>(algebraRanksQuery);
+  const { data: equationRanks, isLoading: loadingEquation } = useCollection<UserRank>(equationRanksQuery);
 
   const isLoading = loadingVector || loadingAlgebra || loadingEquation;
 
@@ -45,23 +58,29 @@ export function AllUsers() {
       return [];
     }
 
-    const userMap = new Map<string, UserProfile>();
+    const userMap = new Map<string, UserWithGames>();
 
-    const processRanks = (ranks: UserProfile[]) => {
+    const processRanks = (ranks: UserRank[], game: keyof UserWithGames['gamesPlayed']) => {
       ranks.forEach(rank => {
         if (!userMap.has(rank.userId)) {
           userMap.set(rank.userId, {
             userId: rank.userId,
             username: rank.username,
-            avatar: rank.avatar
+            avatar: rank.avatar,
+            gamesPlayed: { vectorZen: 0, algebra: 0, equation: 0 }
           });
+        }
+        const user = userMap.get(rank.userId)!;
+        user.gamesPlayed[game]++;
+        if (rank.avatar && !user.avatar) {
+            user.avatar = rank.avatar;
         }
       });
     };
 
-    processRanks(vectorZenRanks);
-    processRanks(algebraRanks);
-    processRanks(equationRanks);
+    processRanks(vectorZenRanks, 'vectorZen');
+    processRanks(algebraRanks, 'algebra');
+    processRanks(equationRanks, 'equation');
 
     return Array.from(userMap.values()).sort((a, b) => a.username.localeCompare(b.username));
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
@@ -72,14 +91,14 @@ export function AllUsers() {
         <CardTitle className="text-center font-headline text-3xl font-bold flex items-center justify-center gap-2">
           <Users /> All Players
         </CardTitle>
-        <CardDescription className="text-center">A list of all unique players across all games.</CardDescription>
+        <CardDescription className="text-center">A list of all unique players and the games they've played.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Player</TableHead>
-              <TableHead className="text-right">User ID</TableHead>
+              <TableHead className="text-center">Games Played</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -92,8 +111,12 @@ export function AllUsers() {
                       <Skeleton className="h-4 w-24" />
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="h-4 w-32 ml-auto" />
+                  <TableCell className="text-center">
+                    <div className="flex justify-center gap-2">
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-6 w-20" />
+                        <Skeleton className="h-6 w-20" />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -109,7 +132,28 @@ export function AllUsers() {
                       <span>{user.username}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-muted-foreground">{user.userId}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-center items-center gap-2 flex-wrap">
+                        {user.gamesPlayed.vectorZen > 0 && 
+                            <Badge variant="outline" className="gap-1.5 font-mono">
+                                <Atom className="h-3 w-3 text-primary"/>
+                                VectorZen: {user.gamesPlayed.vectorZen}
+                            </Badge>
+                        }
+                        {user.gamesPlayed.algebra > 0 && 
+                            <Badge variant="outline" className="gap-1.5 font-mono">
+                                <Puzzle className="h-3 w-3 text-primary"/>
+                                Algebra Arena: {user.gamesPlayed.algebra}
+                            </Badge>
+                        }
+                        {user.gamesPlayed.equation > 0 && 
+                            <Badge variant="outline" className="gap-1.5 font-mono">
+                                <Divide className="h-3 w-3 text-primary"/>
+                                Equation: {user.gamesPlayed.equation}
+                            </Badge>
+                        }
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             ) : (
