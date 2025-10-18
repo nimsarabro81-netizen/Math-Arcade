@@ -6,7 +6,7 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 
 type UserRank = {
@@ -14,6 +14,8 @@ type UserRank = {
   username: string;
   score: number;
 };
+
+const MIN_WIDTH_PER_PLAYER = 60; // 60px per player
 
 export function ScoreChart() {
   const { firestore } = useFirebase();
@@ -67,37 +69,40 @@ export function ScoreChart() {
     })).sort((a,b) => a.username.localeCompare(b.username));
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
 
+  const chartMinWidth = chartData.length * MIN_WIDTH_PER_PLAYER;
+
   return (
     <Card className="shadow-lg h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 font-headline text-3xl font-bold">
           <BarChart3 /> Player Score Distribution
         </CardTitle>
-        <CardDescription>A look at scores across all games. Drag the slider to see more players.</CardDescription>
+        <CardDescription>A look at scores across all games. Use the scrollbar to see all players.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading && <Skeleton className="h-[350px] w-full" />}
         {!isLoading && chartData.length > 0 && (
-             <div className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                        <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={60} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip
-                            cursor={{fill: 'hsl(var(--muted))'}}
-                            contentStyle={{
-                                background: "hsl(var(--background))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "var(--radius)",
-                            }}
-                        />
-                        <Legend wrapperStyle={{fontSize: "14px"}} />
-                        <Line type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" dot={false} />
-                        <Line type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" dot={false} />
-                        <Line type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" dot={false} />
-                        <Brush dataKey="username" height={30} stroke="hsl(var(--primary))" travellerWidth={20} />
-                    </LineChart>
-                </ResponsiveContainer>
+             <div className="h-[350px] w-full overflow-x-auto">
+                <div style={{ width: Math.max(chartMinWidth, 500), height: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 60 }}>
+                            <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip
+                                cursor={{fill: 'hsl(var(--muted))'}}
+                                contentStyle={{
+                                    background: "hsl(var(--background))",
+                                    border: "1px solid hsl(var(--border))",
+                                    borderRadius: "var(--radius)",
+                                }}
+                            />
+                            <Legend wrapperStyle={{fontSize: "14px"}} />
+                            <Line type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" dot={false} />
+                            <Line type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" dot={false} />
+                            <Line type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" dot={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
              </div>
         )}
          {!isLoading && chartData.length === 0 && (
