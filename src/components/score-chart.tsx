@@ -6,7 +6,7 @@ import { collection, query } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Brush } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 
 type UserRank = {
@@ -80,7 +80,7 @@ export function ScoreChart() {
         {!isLoading && chartData.length > 0 && (
              <div className="h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <XAxis dataKey="username" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-45} textAnchor="end" height={60} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                         <Tooltip
@@ -92,11 +92,11 @@ export function ScoreChart() {
                             }}
                         />
                         <Legend wrapperStyle={{fontSize: "14px"}} />
-                        <Bar dataKey="VectorZen" stackId="a" fill="hsl(var(--chart-1))" />
-                        <Bar dataKey="Algebra Arena" stackId="a" fill="hsl(var(--chart-2))" />
-                        <Bar dataKey="Equation Equilibrium" stackId="a" fill="hsl(var(--chart-3))" />
+                        <Line type="monotone" dataKey="VectorZen" stroke="hsl(var(--chart-1))" dot={false} />
+                        <Line type="monotone" dataKey="Algebra Arena" stroke="hsl(var(--chart-2))" dot={false} />
+                        <Line type="monotone" dataKey="Equation Equilibrium" stroke="hsl(var(--chart-3))" dot={false} />
                         <Brush dataKey="username" height={30} stroke="hsl(var(--primary))" travellerWidth={20} />
-                    </BarChart>
+                    </LineChart>
                 </ResponsiveContainer>
              </div>
         )}
