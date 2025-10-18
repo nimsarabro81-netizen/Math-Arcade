@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Podium } from '@/components/podium';
 import { ScoreChart } from '@/components/score-chart';
 import { LogOut } from 'lucide-react';
+import { AllUsers } from '@/components/all-users';
 
 const ADMIN_EMAIL = "nimsarabro81@gmail.com";
 
@@ -68,11 +69,12 @@ export default function AdminPage() {
         <GameStatusControls />
 
         <Tabs defaultValue="overview" className="w-full mt-8">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="vectorzen">VectorZen</TabsTrigger>
             <TabsTrigger value="algebra">Algebra Arena</TabsTrigger>
             <TabsTrigger value="equation">Equation Equilibrium</TabsTrigger>
+            <TabsTrigger value="all-users">All Users</TabsTrigger>
           </TabsList>
           <TabsContent value="overview">
             <section className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-8">
@@ -100,6 +102,11 @@ export default function AdminPage() {
             <section className="mt-6 space-y-4">
                 <AdminControls collectionName="equationRanks" leaderboardName="Equation Equilibrium Leaderboard" />
                 <Ranking collectionName="equationRanks" title="Equation Equilibrium Leaderboard" />
+            </section>
+          </TabsContent>
+           <TabsContent value="all-users">
+            <section className="mt-6 space-y-4">
+              <AllUsers />
             </section>
           </TabsContent>
         </Tabs>
