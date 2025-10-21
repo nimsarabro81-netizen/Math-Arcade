@@ -76,12 +76,16 @@ export default function AlgebraPage() {
             if (startTime) {
                 const endTime = Date.now();
                 durationInSeconds = (endTime - startTime) / 1000;
-                const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
-                finalScoreValue += timeBonus;
-                toast({
-                    title: `Time Bonus: +${timeBonus}`,
-                    description: `You completed the game in ${durationInSeconds.toFixed(1)} seconds.`,
-                });
+                
+                // Bonus for completing all 10 levels in under 5 minutes (300 seconds)
+                if (durationInSeconds < 300) {
+                    const timeBonus = 50;
+                    finalScoreValue += timeBonus;
+                    toast({
+                        title: `Speed Bonus: +${timeBonus}!`,
+                        description: `You completed all levels in ${durationInSeconds.toFixed(1)} seconds. Great job!`,
+                    });
+                }
             }
             setFinalScore(finalScoreValue);
             saveScore(finalScoreValue, durationInSeconds);
