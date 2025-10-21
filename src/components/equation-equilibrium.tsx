@@ -27,7 +27,7 @@ const levels = [
     { equation: "x/2-3=5", optimalSteps: 2 },
     { equation: "x/3+2=3", optimalSteps: 2 },
     { equation: "2x/3=4", optimalSteps: 2 },
-    { equation: "2y/3-1=5", optimalSteps: 3 }, // Note: parser handles 'y' and 'a' as 'x'
+    { equation: "2y/3-1=5", optimalSteps: 3 },
     { equation: "5-3a/5=-7", optimalSteps: 3 },
     { equation: "2(3x-5)=8", optimalSteps: 3 },
     { equation: "5(3x-1)-2=23", optimalSteps: 4 },
@@ -334,13 +334,15 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
         return;
     }
 
+    const tolerance = 0.001;
     let isCorrect = false;
+
     // Check for x = value
-    if (equationState.left.x === 1 && equationState.left.c === 0 && equationState.right.x === 0 && Math.abs(equationState.right.c - finalAnswer) < 0.001) {
+    if (Math.abs(equationState.left.x - 1) < tolerance && Math.abs(equationState.left.c) < tolerance && Math.abs(equationState.right.x) < tolerance && Math.abs(equationState.right.c - finalAnswer) < tolerance) {
         isCorrect = true;
     }
     // Check for value = x
-    if (equationState.right.x === 1 && equationState.right.c === 0 && equationState.left.x === 0 && Math.abs(equationState.left.c - finalAnswer) < 0.001) {
+    if (Math.abs(equationState.right.x - 1) < tolerance && Math.abs(equationState.right.c) < tolerance && Math.abs(equationState.left.x) < tolerance && Math.abs(equationState.left.c - finalAnswer) < tolerance) {
         isCorrect = true;
     }
 
