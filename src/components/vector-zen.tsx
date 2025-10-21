@@ -23,7 +23,7 @@ type AnimatedBall = BallType & {
 
 type LevelStage = 'prediction' | 'pairing';
 
-const levels = ['1.5 - (-3.5)', '2 + 2', '5 - 8'];
+const levels = ['(-5)+(-7)', '(-7)+(3)', '(4)-(-2)', '(-5)-(-3)', '(-9.5)+(3)', '(1.5)-(-3.5)'];
 
 let nextId = 0;
 
@@ -42,8 +42,9 @@ const getEquationParts = (str: string): { positives: number[]; negatives: number
         positives = [1.5];
         negatives = [3.5];
     } else {
-        const tokens = str.replace(/\s/g, '').match(/-?\d+(\.\d+)?|[+\-]/g) || [];
+        const tokens = str.replace(/\s/g, '').replace(/\(/g, '').replace(/\)/g, '').match(/-?\d+(\.\d+)?|[+\-]/g) || [];
         let nextSign = 1;
+        let isFirstNumber = true;
 
         for (const token of tokens) {
             if (token === '+') {
@@ -52,15 +53,18 @@ const getEquationParts = (str: string): { positives: number[]; negatives: number
                 nextSign = -1;
             } else {
                 const num = parseFloat(token);
-                // If sign comes from an operator, apply it. Otherwise, it's part of the number.
-                const finalNum = token.startsWith('-') ? num : num * nextSign;
+                let finalNum = num;
+
+                if (!isFirstNumber) {
+                   finalNum = num * nextSign;
+                }
                 
                 if (finalNum > 0) {
                     positives.push(finalNum);
                 } else if (finalNum < 0) {
                     negatives.push(Math.abs(finalNum));
                 }
-                // Reset sign for next number if not explicitly given
+                isFirstNumber = false;
                 nextSign = 1; 
             }
         }
