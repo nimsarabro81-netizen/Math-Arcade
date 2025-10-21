@@ -127,6 +127,11 @@ export default {
             '0%': { transform: 'translate(0, 0)', opacity: '1' },
             '100%': { transform: 'var(--transform-2)', opacity: '0.5' }
         },
+        'float': {
+            '0%': { transform: 'translateY(0px)' },
+            '50%': { transform: 'translateY(-10px)' },
+            '100%': { transform: 'translateY(0px)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -139,6 +144,7 @@ export default {
         'fade-out-zero': 'fade-out-zero 0.5s ease-in-out forwards',
         'pair-annihilate-1': 'pair-annihilate-1 0.4s ease-in-out forwards',
         'pair-annihilate-2': 'pair-annihilate-2 0.4s ease-in-out forwards',
+        'float': 'float 4s ease-in-out infinite',
       },
        backgroundImage: {
         'grid': 'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px)',

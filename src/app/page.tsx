@@ -71,12 +71,22 @@ export default function WelcomePage() {
     )
   }
 
+  const titleText = "Math Arcade";
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
       <div className="w-full max-w-4xl mx-auto text-center">
         <header className="mb-12">
-          <h1 className="font-headline text-6xl md:text-8xl font-bold text-primary animate-fade-in">
-            Math Arcade
+          <h1 className="font-headline text-6xl md:text-8xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-fade-in">
+            {titleText.split("").map((char, index) => (
+              <span
+                key={index}
+                className="inline-block animate-float"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                {char === " " ? "\u00A0" : char}
+              </span>
+            ))}
           </h1>
            {identity ? (
              <div className="flex flex-col items-center gap-4 mt-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
