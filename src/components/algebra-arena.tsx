@@ -19,21 +19,48 @@ const ItemTypes = {
   FACTOR_BLOCK: 'factor_block',
 };
 
-const levels = ["3x+5x-x", "2x-3y+5x+6y", "x*x+5*x+6", "5*a*a-45", "3*x*x+18*x*y-6*y"];
+const levels = [
+    "3x+5x-x",
+    "2x-3y+5x-2y",
+    "7x-y-5x+6y",
+    "6x*x-12y",
+    "3x*x+18xy-6y",
+    "x*x-16",
+    "5a*a-45",
+    "x*x+5x+6",
+    "x*x-9x+20",
+    "a*a-2a-35"
+];
 
 const factorableSolutions: Record<string, { solutions: string[][], blocks: string[] }> = {
-    "x*x+5*x+6": {
-        solutions: [["(x+2)", "(x+3)"], ["(x+3)", "(x+2)"]],
-        blocks: ["(x+2)", "(x+3)", "(x+1)", "(x+6)", "(x-2)", "(x-3)"]
+    "6x*x-12y": {
+        solutions: [["6", "(x*x-2y)"]],
+        blocks: ["6", "x", "y", "2", "(x*x-2y)", "12"]
     },
-    "5*a*a-45": {
-        solutions: [["5", "(a-3)", "(a+3)"], ["5", "(a+3)", "(a-3)"]],
-        blocks: ["5", "(a-3)", "(a+3)", "a", "(a-9)", "(a+5)"]
-    },
-    "3*x*x+18*x*y-6*y": {
+    "3x*x+18xy-6y": {
         solutions: [["3", "(x*x+6xy-2y)"]],
         blocks: ["3", "x", "y", "(x*x+6xy-2y)", "6", "(xy-y)"]
     },
+    "x*x-16": {
+        solutions: [["(x-4)", "(x+4)"], ["(x+4)", "(x-4)"]],
+        blocks: ["(x-4)", "(x+4)", "(x-2)", "(x+2)", "(x-8)", "(x+8)"]
+    },
+    "5a*a-45": {
+        solutions: [["5", "(a-3)", "(a+3)"], ["5", "(a+3)", "(a-3)"]],
+        blocks: ["5", "(a-3)", "(a+3)", "a", "(a-9)", "(a+5)"]
+    },
+    "x*x+5x+6": {
+        solutions: [["(x+2)", "(x+3)"], ["(x+3)", "(x+2)"]],
+        blocks: ["(x+2)", "(x+3)", "(x+1)", "(x+6)", "(x-2)", "(x-3)"]
+    },
+    "x*x-9x+20": {
+        solutions: [["(x-4)", "(x-5)"], ["(x-5)", "(x-4)"]],
+        blocks: ["(x-4)", "(x-5)", "(x+4)", "(x+5)", "(x-10)", "(x-2)"]
+    },
+    "a*a-2a-35": {
+        solutions: [["(a-7)", "(a+5)"], ["(a+5)", "(a-7)"]],
+        blocks: ["(a-7)", "(a+5)", "(a+7)", "(a-5)", "(a-35)", "a"]
+    }
 };
 
 const isFactorable = (expr: string) => Object.keys(factorableSolutions).includes(expr);
@@ -626,3 +653,5 @@ export function AlgebraArena({ score, onScoreChange, onGameComplete }: AlgebraAr
     </DndProvider>
   );
 }
+
+    
