@@ -119,10 +119,11 @@ const parseEquation = (expr: string): Equation => {
 const formatTerm = (term: Term, isLeft: boolean) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        // If term.x is a whole number (or close to it due to float inaccuracies)
-        if (Math.abs(term.x - Math.round(term.x)) < 0.001) {
+        if (Math.abs(term.x) === 1) {
+             parts.push(term.x === 1 ? 'x' : '-x');
+        } else if (Math.abs(term.x - Math.round(term.x)) < 0.001) {
             const roundedX = Math.round(term.x);
-            let xStr = roundedX === 1 ? 'x' : roundedX === -1 ? '-x' : `${roundedX}x`;
+            let xStr = `${roundedX}x`;
             parts.push(xStr);
         } else { // It's a fraction
             const sign = term.x > 0 ? '' : '-';
@@ -282,6 +283,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [operationValue, setOperationValue] = useState('');
+  const [isHintUsed, setIsHintUsed] = useState(false);
   
   const { toast } = useToast();
   
@@ -293,6 +295,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setUserAnswer('');
     setOperationValue('');
     setOperationCount(0);
+    setIsHintUsed(false);
   }, [currentLevelIndex]);
   
   const handleOperation = (op: Operation['op']) => {
@@ -360,11 +363,17 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setUserAnswer('');
     setOperationValue('');
     setOperationCount(0);
+    setIsHintUsed(false);
     onScoreChange(Math.max(0, score - 5));
     toast({ variant: 'destructive', title: 'Reset Penalty', description: '-5 points for resetting.' });
   };
   
   const handleHint = () => {
+      if (isHintUsed) {
+          toast({ title: 'Hint Already Used', description: 'You can only use one hint per level.' });
+          return;
+      }
+
       let hintText = '';
       const {left, right} = equationState;
       // Hint to gather constants
@@ -386,6 +395,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
 
       toast({ title: 'Hint Used!', description: hintText });
       onScoreChange(Math.max(0, score - 15));
+      setIsHintUsed(true);
   };
 
   const goToNextLevel = () => {
@@ -420,7 +430,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
                 </Button>
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={handleHint} variant="outline" size="icon" aria-label="Get a Hint" disabled={isLevelSolved}>
+                <Button onClick={handleHint} variant="outline" size="icon" aria-label="Get a Hint" disabled={isLevelSolved || isHintUsed}>
                     <Lightbulb />
                 </Button>
                 <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border" disabled={isLevelSolved}>
