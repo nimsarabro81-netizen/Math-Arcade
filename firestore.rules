@@ -3,37 +3,17 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is the owner of a document
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-
-    // Rules for game settings
-    match /gameSettings/{gameId} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Rules for user rankings
     match /userRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if isOwner(resource.data.userId);
+      allow read, create, delete: if request.auth != null;
     }
-
-    // Rules for algebra rankings
     match /algebraRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if isOwner(resource.data.userId);
+      allow read, create, delete: if request.auth != null;
     }
-
-    // Rules for equation rankings
     match /equationRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if isOwner(resource.data.userId);
+      allow read, create, delete: if request.auth != null;
+    }
+    match /gameSettings/{gameId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
