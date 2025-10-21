@@ -41,12 +41,12 @@ const ballVariants = cva(
         {
             type: "negative",
             size: "full",
-            className: "rounded-lg"
+            className: "rounded-full"
         },
         {
             type: "negative",
             size: "half",
-            className: "rounded-t-lg"
+            className: "rounded-t-full"
         }
     ],
     defaultVariants: {

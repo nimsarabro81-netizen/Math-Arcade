@@ -407,7 +407,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
                         </div>
                         <div className="flex items-center gap-4">
                           <Label htmlFor="negatives" className="w-32 text-blue-500 font-bold">
-                            Blue Rectangles
+                            Blue Balls
                           </Label>
                           <Input
                             id="negatives"
@@ -471,5 +471,3 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
-
-    
