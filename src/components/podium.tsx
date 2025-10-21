@@ -6,9 +6,15 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirebase, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy } from 'lucide-react';
+import { Trophy, Atom, Puzzle, Divide } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type UserRank = {
   id: string;
@@ -70,7 +76,7 @@ export function Podium() {
                     scores: { vectorZen: 0, algebra: 0, equation: 0 }
                 };
             }
-            if (rank.score > allScores[rank.userId].scores[game]) {
+             if (rank.score > allScores[rank.userId].scores[game]) {
                 allScores[rank.userId].scores[game] = rank.score;
             }
             if (rank.avatar && !allScores[rank.userId].avatar) {
@@ -91,82 +97,72 @@ export function Podium() {
       .sort((a, b) => b.totalScore - a.totalScore)
       .slice(0, 3);
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
-
-  const getPodiumClass = (index: number) => {
-    switch(index) {
-        case 0: return "h-40 bg-yellow-400/80 shadow-[0_0_30px_10px_rgba(255,255,255,0.7)]";
-        case 1: return "h-32 bg-gray-400/70";
-        case 2: return "h-24 bg-yellow-700/60";
-        default: return "";
+  
+  const getRankClasses = (index: number) => {
+    switch (index) {
+        case 0: return { card: 'bg-yellow-400/20 border-yellow-500/50', avatar: 'border-yellow-400' };
+        case 1: return { card: 'bg-gray-400/20 border-gray-500/50', avatar: 'border-gray-400' };
+        case 2: return { card: 'bg-yellow-700/20 border-yellow-800/50', avatar: 'border-yellow-700' };
+        default: return { card: 'bg-card', avatar: 'border-muted' };
     }
   }
 
   return (
-    <Card className="shadow-lg h-full bg-grid bg-background overflow-hidden">
-      <CardHeader>
-        <CardTitle className="text-center font-headline text-3xl font-bold flex items-center justify-center gap-2">
-          <Trophy /> Top Champions
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-8 px-4">
-        {isLoading && (
-            <div className="flex justify-around items-end h-40">
-                <Skeleton className="w-24 h-32" />
-                <Skeleton className="w-24 h-40" />
-                <Skeleton className="w-24 h-24" />
-            </div>
-        )}
-        {!isLoading && topPlayers.length > 0 && (
-             <div className="flex justify-around items-end h-48">
-                {topPlayers[1] && (
-                    <div className="flex flex-col items-center text-center w-24">
-                        <Avatar className="w-16 h-16 mb-2 border-4 border-gray-300">
-                            <AvatarImage src={topPlayers[1].avatar} alt={topPlayers[1].username} />
-                            <AvatarFallback>{topPlayers[1].username.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className={cn("relative w-full rounded-t-lg border-2 border-b-0 border-gray-300/50 backdrop-blur-sm transition-all flex flex-col justify-center items-center p-2", getPodiumClass(1))}>
-                            <p className="font-bold text-lg text-white drop-shadow-md z-10">2nd</p>
-                            <p className="font-mono text-sm font-semibold text-white/80 truncate">{topPlayers[1].username}</p>
-                        </div>
-                    </div>
-                )}
+     <Card className="shadow-lg h-full">
+        <CardHeader>
+            <CardTitle className="text-center font-headline text-3xl font-bold flex items-center justify-center gap-2">
+                <Trophy /> Top Champions
+            </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+            {isLoading && Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
+            
+            {!isLoading && topPlayers.length > 0 && (
+                <TooltipProvider>
+                    {topPlayers.map((player, index) => (
+                        <Tooltip key={player.username} delayDuration={100}>
+                            <TooltipTrigger asChild>
+                                <Card className={cn("flex items-center p-4 gap-4 transition-transform hover:scale-105", getRankClasses(index).card)}>
+                                    <span className="text-3xl font-bold w-8 text-center">{index + 1}</span>
+                                    <Avatar className={cn("w-12 h-12 border-4", getRankClasses(index).avatar)}>
+                                        <AvatarImage src={player.avatar} alt={player.username} />
+                                        <AvatarFallback>{player.username.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-grow">
+                                        <p className="font-bold text-lg truncate">{player.username}</p>
+                                        <p className="text-muted-foreground font-mono">Total Score: {player.totalScore}</p>
+                                    </div>
+                                </Card>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="w-64 p-4">
+                                <h4 className="font-bold mb-2">Score Breakdown</h4>
+                                <ul className="space-y-2 text-sm">
+                                    <li className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2 text-muted-foreground"><Atom className="h-4 w-4"/> VectorZen</span>
+                                        <span className="font-mono font-bold">{player.scores.vectorZen}</span>
+                                    </li>
+                                     <li className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2 text-muted-foreground"><Puzzle className="h-4 w-4"/> Algebra Arena</span>
+                                        <span className="font-mono font-bold">{player.scores.algebra}</span>
+                                    </li>
+                                     <li className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2 text-muted-foreground"><Divide className="h-4 w-4"/> Equation</span>
+                                        <span className="font-mono font-bold">{player.scores.equation}</span>
+                                    </li>
+                                </ul>
+                            </TooltipContent>
+                        </Tooltip>
+                    ))}
+                </TooltipProvider>
+            )}
 
-                {topPlayers[0] && (
-                    <div className="flex flex-col items-center text-center order-first sm:order-none -translate-y-4 w-28">
-                        <div className="relative">
-                            <div className="absolute inset-0 -m-3 rounded-full bg-primary/30 animate-pulse z-0"></div>
-                            <Avatar className="w-20 h-20 mb-2 border-4 border-yellow-300 z-10 relative">
-                                <AvatarImage src={topPlayers[0].avatar} alt={topPlayers[0].username} />
-                                <AvatarFallback>{topPlayers[0].username.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                        </div>
-                         <div className={cn("relative w-full rounded-t-lg border-2 border-b-0 border-yellow-300/50 backdrop-blur-sm transition-all flex flex-col justify-center items-center p-2", getPodiumClass(0))}>
-                             <p className="font-extrabold text-2xl text-white drop-shadow-lg z-10">1st</p>
-                             <p className="font-mono text-sm font-semibold text-white/90 truncate">{topPlayers[0].username}</p>
-                        </div>
-                    </div>
-                )}
-                
-                {topPlayers[2] && (
-                    <div className="flex flex-col items-center text-center w-24">
-                         <Avatar className="w-16 h-16 mb-2 border-4 border-yellow-800">
-                            <AvatarImage src={topPlayers[2].avatar} alt={topPlayers[2].username} />
-                            <AvatarFallback>{topPlayers[2].username.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                         <div className={cn("relative w-full rounded-t-lg border-2 border-b-0 border-yellow-800/50 backdrop-blur-sm transition-all flex flex-col justify-center items-center p-2", getPodiumClass(2))}>
-                             <p className="font-bold text-lg text-white drop-shadow-md z-10">3rd</p>
-                             <p className="font-mono text-sm font-semibold text-white/80 truncate">{topPlayers[2].username}</p>
-                        </div>
-                    </div>
-                )}
-             </div>
-        )}
-        {!isLoading && topPlayers.length === 0 && (
-            <div className="text-center text-muted-foreground py-10 h-48 flex items-center justify-center">
-                No players on the podium yet.
-            </div>
-        )}
-      </CardContent>
+            {!isLoading && topPlayers.length === 0 && (
+                <div className="text-center text-muted-foreground py-10">
+                    No players on the podium yet.
+                </div>
+            )}
+        </CardContent>
     </Card>
   );
 }
+
