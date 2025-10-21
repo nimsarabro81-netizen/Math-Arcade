@@ -27,47 +27,46 @@ const levels = ["(-5)+(-7)", "(-7)+(3)", "(4)-(-2)", "(-5)-(-3)", "(-9.5)+(3)", 
 
 let nextId = 0;
 
-const getEquationParts = (str: string): { positives: number[]; negatives: number[]; answer: number } => {
+const getEquationParts = (str: string): { positives: number[], negatives: number[], answer: number } => {
   try {
-    // This will evaluate the expression correctly, e.g., '1.5 - (-3.5)' becomes 5
     const answer = new Function('return ' + str.replace(/--/g, '+'))();
 
     let positives: number[] = [];
     let negatives: number[] = [];
+
+    // Improved parsing for equations like (4)-(-2)
+    const sanitized = str.replace(/\s/g, '').replace(')(', ')+(').replace('--', '+');
+    const parts = sanitized.match(/\(-?\d+(\.\d+)?\)/g) || [];
+
+    for (const part of parts) {
+      const num = parseFloat(part.replace(/[()]/g, ''));
+      if (num > 0) {
+        positives.push(num);
+      } else {
+        negatives.push(Math.abs(num));
+      }
+    }
     
-    // This logic is to parse the numbers as they appear for the prediction stage
-    const specialCase = str.replace(/\s/g, '');
-    if (specialCase === '1.5-(-3.5)') {
-        // User expects 1.5 to be positive and 3.5 to be negative visually
-        positives = [1.5];
-        negatives = [3.5];
-    } else {
-        const tokens = str.replace(/\s/g, '').replace(/\(/g, '').replace(/\)/g, '').match(/-?\d+(\.\d+)?|[+\-]/g) || [];
-        let nextSign = 1;
-        let isFirstNumber = true;
-
-        for (const token of tokens) {
-            if (token === '+') {
-                nextSign = 1;
-            } else if (token === '-') {
-                nextSign = -1;
-            } else {
-                const num = parseFloat(token);
-                let finalNum = num;
-
-                if (!isFirstNumber) {
-                   finalNum = num * nextSign;
-                }
-                
-                if (finalNum > 0) {
-                    positives.push(finalNum);
-                } else if (finalNum < 0) {
-                    negatives.push(Math.abs(finalNum));
-                }
-                isFirstNumber = false;
-                nextSign = 1; 
-            }
+    // This handles cases like `(4)-(-2)` being parsed as `(4)` and `(-2)` initially.
+    // The subtraction in the middle is the operation. So for prediction, we should show
+    // the balls as they are in the parentheses. `4` is positive, `-2` is negative.
+    // The `flip` button handles the operation. Let's refine the parsing.
+    
+    // Resetting for a clearer logic pass.
+    positives = [];
+    negatives = [];
+    
+    // This regex will find all numbers within parentheses.
+    const rawNumbers = str.match(/\(-?\d+(?:\.\d+)?\)/g);
+    if (rawNumbers) {
+      rawNumbers.forEach(numStr => {
+        const num = parseFloat(numStr.replace(/[()]/g, ''));
+        if (num > 0) {
+          positives.push(num);
+        } else {
+          negatives.push(Math.abs(num));
         }
+      });
     }
 
     return { positives, negatives, answer };
@@ -259,13 +258,35 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
       });
       return;
     }
-    setBalls(prevBalls => 
-      prevBalls.map(ball => 
-        selectedBallIds.includes(ball.id) 
-        ? {...ball, value: -ball.value as BallType['value']}
-        : ball
-      )
-    );
+    
+    // For level (4)-(-2), the operator is '-'. Flipping the negative balls is the core mechanic.
+    const equation = levels[currentLevelIndex];
+    if (equation.includes('-(')) { // A good indicator for subtraction of a negative
+        const negativeBallsToFlip = selectedBallIds.filter(id => {
+            const ball = balls.find(b => b.id === id);
+            return ball && ball.value < 0;
+        });
+
+        if (negativeBallsToFlip.length > 0) {
+            setBalls(prevBalls => 
+              prevBalls.map(ball => 
+                negativeBallsToFlip.includes(ball.id) 
+                ? {...ball, value: -ball.value as BallType['value']}
+                : ball
+              )
+            );
+        }
+    } else {
+        // Default flip behavior for other cases if needed
+        setBalls(prevBalls => 
+          prevBalls.map(ball => 
+            selectedBallIds.includes(ball.id) 
+            ? {...ball, value: -ball.value as BallType['value']}
+            : ball
+          )
+        );
+    }
+    
     setSelectedBallIds([]);
   }
 
@@ -499,3 +520,5 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
     </>
   );
 }
+
+    
