@@ -49,13 +49,14 @@ export default function AlgebraPage() {
         setScore(newScore);
     };
 
-    const saveScore = useCallback((finalScoreValue: number) => {
+    const saveScore = useCallback((finalScoreValue: number, duration: number) => {
         if (user && firestore && identity) {
         const rankData = {
             userId: user.uid,
             username: identity.username,
             avatar: identity.avatar,
             score: finalScoreValue,
+            duration: duration,
             lastUpdated: new Date().toISOString(),
         };
         const ranksCollection = collection(firestore, 'algebraRanks');
@@ -71,9 +72,10 @@ export default function AlgebraPage() {
     useEffect(() => {
         if (isGameComplete) {
             let finalScoreValue = score;
+            let durationInSeconds = 0;
             if (startTime) {
                 const endTime = Date.now();
-                const durationInSeconds = (endTime - startTime) / 1000;
+                durationInSeconds = (endTime - startTime) / 1000;
                 const timeBonus = Math.max(0, 100 - Math.floor(durationInSeconds));
                 finalScoreValue += timeBonus;
                 toast({
@@ -82,7 +84,7 @@ export default function AlgebraPage() {
                 });
             }
             setFinalScore(finalScoreValue);
-            saveScore(finalScoreValue);
+            saveScore(finalScoreValue, durationInSeconds);
         }
     }, [isGameComplete, score, saveScore, startTime, toast]);
 

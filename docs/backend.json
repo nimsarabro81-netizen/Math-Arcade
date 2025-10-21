@@ -18,6 +18,10 @@
           "type": "number",
           "description": "The user's score in the VectorZen game."
         },
+        "duration": {
+          "type": "number",
+          "description": "The time in seconds the user spent to complete the game."
+        },
         "lastUpdated": {
           "type": "string",
           "description": "Timestamp of the last time the user's score/rank was updated.",
@@ -28,6 +32,7 @@
         "userId",
         "username",
         "score",
+        "duration",
         "lastUpdated"
       ]
     },
@@ -48,6 +53,10 @@
           "type": "number",
           "description": "The user's score in the Algebra Arena game."
         },
+        "duration": {
+          "type": "number",
+          "description": "The time in seconds the user spent to complete the game."
+        },
         "lastUpdated": {
           "type": "string",
           "description": "Timestamp of the last time the user's score/rank was updated.",
@@ -58,6 +67,7 @@
         "userId",
         "username",
         "score",
+        "duration",
         "lastUpdated"
       ]
     },
@@ -69,9 +79,13 @@
             "userId": { "type": "string", "description": "Reference to the User." },
             "username": { "type": "string", "description": "The user's display name, 'Anonymous' for anonymous users." },
             "score": { "type": "number", "description": "The user's score in the Equation Equilibrium game." },
+            "duration": {
+              "type": "number",
+              "description": "The time in seconds the user spent to complete the game."
+            },
             "lastUpdated": { "type": "string", "description": "Timestamp of the last time the user's score/rank was updated.", "format": "date-time" }
         },
-        "required": ["userId", "username", "score", "lastUpdated"]
+        "required": ["userId", "username", "score", "duration", "lastUpdated"]
     },
     "GameSetting": {
       "title": "GameSetting",

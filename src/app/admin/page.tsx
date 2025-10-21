@@ -15,6 +15,7 @@ import { ScoreChart } from '@/components/score-chart';
 import { LogIn, LogOut } from 'lucide-react';
 import { AllUsers } from '@/components/all-users';
 import Link from 'next/link';
+import { TimeChart } from '@/components/time-chart';
 
 const ADMIN_EMAIL = "nimsarabro81@gmail.com";
 
@@ -54,7 +55,7 @@ export default function AdminPage() {
   // If the user is logged in but is not the admin, show a restricted access message
   if (user.email !== ADMIN_EMAIL) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background">
+      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg_background">
         <div className="text-center">
             <h1 className="font-headline text-4xl md:text-6xl font-bold text-destructive mb-4">
                 Access Denied
@@ -105,7 +106,10 @@ export default function AdminPage() {
                 <Podium />
               </div>
               <div className="lg:col-span-3">
-                <ScoreChart />
+                 <div className="space-y-8">
+                    <ScoreChart />
+                    <TimeChart />
+                </div>
               </div>
             </section>
           </TabsContent>
