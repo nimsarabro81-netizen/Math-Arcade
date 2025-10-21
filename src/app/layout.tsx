@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'VectorZen',
+  title: 'Math Arcade',
   description: 'A playful way to understand integers.',
 };
 
