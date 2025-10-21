@@ -288,7 +288,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [operationValue, setOperationValue] = useState('');
-  const [isHintUsed, setIsHintUsed] = useState(isHintUsed);
+  const [isHintUsed, setIsHintUsed] = useState(false);
   const [levelStartTime, setLevelStartTime] = useState<number | null>(null);
   
   const { toast } = useToast();
@@ -521,5 +521,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
