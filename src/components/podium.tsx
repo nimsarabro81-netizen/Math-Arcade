@@ -25,6 +25,7 @@ type UserRank = {
 };
 
 type TopPlayer = {
+  userId: string;
   username: string;
   avatar?: string;
   totalScore: number;
@@ -64,12 +65,13 @@ export function Podium() {
       return [];
     }
 
-    const allScores: { [userId: string]: { username: string; avatar?: string; totalScore: number; scores: { vectorZen: number; algebra: number; equation: number; } } } = {};
+    const allScores: { [userId: string]: { userId: string; username: string; avatar?: string; totalScore: number; scores: { vectorZen: number; algebra: number; equation: number; } } } = {};
 
     const processRanks = (ranks: UserRank[], game: keyof TopPlayer['scores']) => {
         ranks.forEach(rank => {
             if (!allScores[rank.userId]) {
                 allScores[rank.userId] = {
+                    userId: rank.userId,
                     username: rank.username,
                     avatar: rank.avatar,
                     totalScore: 0,
@@ -120,7 +122,7 @@ export function Podium() {
             {!isLoading && topPlayers.length > 0 && (
                 <TooltipProvider>
                     {topPlayers.map((player, index) => (
-                        <Tooltip key={player.username} delayDuration={100}>
+                        <Tooltip key={player.userId} delayDuration={100}>
                             <TooltipTrigger asChild>
                                 <Card className={cn("flex items-center p-4 gap-4 transition-transform hover:scale-105", getRankClasses(index).card)}>
                                     <span className="text-3xl font-bold w-8 text-center">{index + 1}</span>
@@ -165,4 +167,3 @@ export function Podium() {
     </Card>
   );
 }
-
