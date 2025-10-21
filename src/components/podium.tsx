@@ -62,26 +62,34 @@ export function Podium() {
     const allScores: { [userId: string]: { username: string; avatar?: string; totalScore: number; scores: { vectorZen: number; algebra: number; equation: number; } } } = {};
 
     const processRanks = (ranks: UserRank[], game: keyof TopPlayer['scores']) => {
-      ranks.forEach(rank => {
-        if (!allScores[rank.userId]) {
-          allScores[rank.userId] = {
-            username: rank.username,
-            avatar: rank.avatar,
-            totalScore: 0,
-            scores: { vectorZen: 0, algebra: 0, equation: 0 }
-          };
-        }
-        allScores[rank.userId].totalScore += rank.score;
-        allScores[rank.userId].scores[game] += rank.score;
-        if (rank.avatar && !allScores[rank.userId].avatar) {
-          allScores[rank.userId].avatar = rank.avatar;
-        }
-      });
+        ranks.forEach(rank => {
+            if (!allScores[rank.userId]) {
+                allScores[rank.userId] = {
+                    username: rank.username,
+                    avatar: rank.avatar,
+                    totalScore: 0,
+                    scores: { vectorZen: 0, algebra: 0, equation: 0 }
+                };
+            }
+            // Only update if the new score is higher
+            if (rank.score > allScores[rank.userId].scores[game]) {
+                allScores[rank.userId].scores[game] = rank.score;
+            }
+
+            if (rank.avatar && !allScores[rank.userId].avatar) {
+                allScores[rank.userId].avatar = rank.avatar;
+            }
+        });
     };
 
     processRanks(vectorZenRanks, 'vectorZen');
     processRanks(algebraRanks, 'algebra');
     processRanks(equationRanks, 'equation');
+
+    // After processing all ranks, calculate the total score from the highest scores
+    Object.values(allScores).forEach(player => {
+        player.totalScore = player.scores.vectorZen + player.scores.algebra + player.scores.equation;
+    });
 
     return Object.values(allScores)
       .sort((a, b) => b.totalScore - a.totalScore)
