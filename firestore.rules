@@ -1,81 +1,39 @@
-/**
- * @fileoverview Firestore Security Rules for the VectorZen application.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure access to user ranking data and game settings.
- * Ranking data is generally public, but write access is restricted. Game settings are read/write restricted to authenticated users.
- *
- * Data Structure:
- * - /userRanks: Stores user ranking data for VectorZen.
- * - /algebraRanks: Stores user ranking data for Algebra Arena.
- * - /equationRanks: Stores user ranking data for Equation Equilibrium.
- * - /gameSettings: Stores game settings, including the active status of each game.
- *
- * Key Security Decisions:
- * - User listing is generally allowed for ranking data.
- * - Game settings are only editable by authenticated users. Specific roles or ownership is not currently enforced, but the rules are structured to easily accommodate this in the future.
- *
- * Denormalization for Authorization:
- *  - The current ruleset does not require denormalization. Future iterations may benefit from denormalizing user roles or game ownership directly into documents for improved performance.
- *
- * Structural Segregation:
- * - The application uses top-level collections for different games' ranking data, providing clear segregation and simplifying rules.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Grants public read access to user ranking data for VectorZen, but restricts write access.
-     * @path /userRanks
-     * @allow (get, list): Any user can read the ranking data.
-     * @deny (create, update, delete): No user can create, update, or delete ranking data directly. Write operations are disabled.
-     * @principle Allows public leaderboard access while preventing unauthorized modifications.
-     */
-    match /userRanks/{userRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    // Helper function to check if a user is the owner of a document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
 
-    /**
-     * @description Grants public read access to user ranking data for Algebra Arena, but restricts write access.
-     * @path /algebraRanks
-     * @allow (get, list): Any user can read the ranking data.
-     * @deny (create, update, delete): No user can create, update, or delete ranking data directly. Write operations are disabled.
-     * @principle Allows public leaderboard access while preventing unauthorized modifications.
-     */
-    match /algebraRanks/{algebraRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    // Rules for game settings
+    match /gameSettings/{gameId} {
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
-    /**
-     * @description Grants public read access to user ranking data for Equation Equilibrium, but restricts write access.
-     * @path /equationRanks
-     * @allow (get, list): Any user can read the ranking data.
-     * @deny (create, update, delete): No user can create, update, or delete ranking data directly. Write operations are disabled.
-     * @principle Allows public leaderboard access while preventing unauthorized modifications.
-     */
-    match /equationRanks/{equationRankId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    // Rules for user rankings
+    match /userRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
-    /**
-     * @description Restricts read and write access to game settings to authenticated users.
-     * @path /gameSettings
-     * @allow (get, list): Any authenticated user can read the game settings.
-     * @allow (create, update, delete): Any authenticated user can create, update, or delete game settings.
-     * @deny: Non-authenticated users are denied all access.
-     * @principle Requires authentication for managing game settings.
-     */
-    match /gameSettings/{gameSettingId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+    // Rules for algebra rankings
+    match /algebraRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isOwner(resource.data.userId);
     }
 
-    function isSignedIn() {
-      return request.auth != null;
+    // Rules for equation rankings
+    match /equationRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isOwner(resource.data.userId);
     }
   }
 }
