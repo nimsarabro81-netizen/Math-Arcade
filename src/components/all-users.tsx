@@ -27,6 +27,11 @@ type UserSummary = {
         vectorZen: number;
         algebra: number;
         equation: number;
+    },
+    scores: {
+        vectorZen: number;
+        algebra: number;
+        equation: number;
     }
 }
 
@@ -61,7 +66,7 @@ export function AllUsers() {
 
     const userMap = new Map<string, UserSummary>();
 
-    const processRanks = (ranks: UserRank[], game: keyof UserSummary['gamesPlayed']) => {
+    const processRanks = (ranks: UserRank[], game: keyof UserSummary['scores']) => {
       ranks.forEach(rank => {
         if (!userMap.has(rank.userId)) {
           userMap.set(rank.userId, {
@@ -69,12 +74,17 @@ export function AllUsers() {
             username: rank.username,
             avatar: rank.avatar,
             totalScore: 0,
-            gamesPlayed: { vectorZen: 0, algebra: 0, equation: 0 }
+            gamesPlayed: { vectorZen: 0, algebra: 0, equation: 0 },
+            scores: { vectorZen: 0, algebra: 0, equation: 0 }
           });
         }
         const user = userMap.get(rank.userId)!;
         user.gamesPlayed[game]++;
-        user.totalScore += rank.score;
+
+        if(rank.score > user.scores[game]) {
+            user.scores[game] = rank.score;
+        }
+
         if (rank.avatar && !user.avatar) {
             user.avatar = rank.avatar;
         }
@@ -84,6 +94,12 @@ export function AllUsers() {
     processRanks(vectorZenRanks, 'vectorZen');
     processRanks(algebraRanks, 'algebra');
     processRanks(equationRanks, 'equation');
+
+    // After processing all ranks, calculate the total score from the highest scores
+    for (const user of userMap.values()) {
+        user.totalScore = user.scores.vectorZen + user.scores.algebra + user.scores.equation;
+    }
+
 
     return Array.from(userMap.values()).sort((a, b) => b.totalScore - a.totalScore);
   }, [vectorZenRanks, algebraRanks, equationRanks, isLoading]);
