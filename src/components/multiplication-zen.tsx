@@ -263,7 +263,7 @@ export function MultiplicationZen({ isGameStarted, score, onScoreChange, onGameC
                             </CardHeader>
                             <CardContent className="flex flex-col gap-2 items-center justify-center p-4 min-h-[80px] bg-muted/50 rounded-b-lg">
                                 {stampedGroups.map((g, i) => (
-                                    <div key={i} className="flex gap-1 p-1 border rounded-md bg-background">
+                                    <div key={i} className="flex flex-wrap gap-1 p-1 border rounded-md bg-background">
                                         {g.map(ball => <Ball key={ball.id} type={ball.value > 0 ? 'positive' : 'negative'} size="full" state="idle" className="w-8 h-8"/>)}
                                     </div>
                                 ))}
