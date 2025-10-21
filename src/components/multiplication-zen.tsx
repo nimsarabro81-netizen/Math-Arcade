@@ -21,12 +21,12 @@ type AnimatedBall = BallType & {
 
 type GamePhase = 'setup' | 'playing';
 
-const levels = ['3 x 2', '3 x -2', '-3 x 2'];
+const levels = ["(-8)x(-3)", "(4)x(-4)", "(-3)x(2)", "(8)x(3)"];
 
 let nextId = 0;
 
 const getEquationParts = (equation: string): { originalFactor1: number, originalFactor2: number, answer: number } => {
-  const parts = equation.split('x').map(s => s.trim());
+  const parts = equation.split('x').map(s => s.trim().replace(/[()]/g, ''));
   const factor1 = parseInt(parts[0], 10);
   const factor2 = parseInt(parts[1], 10);
   return { originalFactor1: factor1, originalFactor2: factor2, answer: factor1 * factor2 };
