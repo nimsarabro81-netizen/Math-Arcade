@@ -23,25 +23,70 @@ const initialEquation: Equation = {
 
 const levels = [
     { equation: "2x-1=3", optimalSteps: 2 },
-    { equation: "3x+2=11", optimalSteps: 2 },
-    { equation: "x/2+1=3", optimalSteps: 2 },
-    { equation: "10-x=7", optimalSteps: 2 },
-    { equation: "5-2x=-1", optimalSteps: 2 },
+    { equation: "3x+2=8", optimalSteps: 2 },
+    { equation: "x/2-3=5", optimalSteps: 2 },
+    { equation: "x/3+2=3", optimalSteps: 2 },
+    { equation: "2x/3=4", optimalSteps: 2 },
+    { equation: "2y/3-1=5", optimalSteps: 3 }, // Note: parser handles 'y' and 'a' as 'x'
+    { equation: "5-3a/5=-7", optimalSteps: 3 },
+    { equation: "2(3x-5)=8", optimalSteps: 3 },
+    { equation: "5(3x-1)-2=23", optimalSteps: 4 },
+    { equation: "2(5(2a+1)-3)=24", optimalSteps: 5 },
 ];
 
 const parseEquation = (expr: string): Equation => {
-  const [leftStr, rightStr] = expr.split('=');
+    // Handle complex nested structures like 2{5(2a+1)-3}=24
+    expr = expr.replace(/\{/g, '(').replace(/\}/g, ')');
+
+    const expandParentheses = (e: string): string => {
+        let current = e;
+        while (/\d\(/.test(current) || /\)\d/.test(current) || /\)\(/.test(current)) {
+            current = current.replace(/(\d)\(/g, '$1*('); // 5(x) -> 5*(x)
+            current = current.replace(/\)(\d)/g, ')*$1'); // (x)5 -> (x)*5
+            current = current.replace(/\)\(/g, ')*(');   // (x)(y) -> (x)*(y)
+        }
+        
+        // A simple expander for expressions like a(b+c) = ab+ac
+        const regex = /(-?\d*(?:\.\d+)?)\s*\*\s*\(([^()]+)\)/;
+        let match;
+        while ((match = current.match(regex)) !== null) {
+            const factor = match[1] === '-' ? -1 : parseFloat(match[1] || '1');
+            const terms = match[2].split(/(?=[+-])/).map(t => t.trim());
+            const expanded = terms.map(term => {
+                const termMatch = term.match(/(-?\d*(?:\.\d+)?)([a-zA-Z]*)/);
+                if (!termMatch) return '';
+                
+                const coeffStr = termMatch[1];
+                const variable = termMatch[2];
+
+                let coeff = 1;
+                if (coeffStr === '-') coeff = -1;
+                else if (coeffStr !== '' && coeffStr !== '+') coeff = parseFloat(coeffStr);
+
+                const newCoeff = factor * coeff;
+                const newCoeffStr = newCoeff === 1 && variable ? '' : newCoeff === -1 && variable ? '-' : newCoeff.toString();
+                
+                return `${newCoeff > 0 ? '+' : ''}${newCoeffStr}${variable}`;
+            }).join('');
+
+            current = current.replace(match[0], `(${expanded})`);
+        }
+        return current.replace(/[()]/g, '');
+    };
+
+    const [leftStr, rightStr] = expr.split('=').map(expandParentheses);
 
   const parseSide = (sideExpr: string): Term => {
     let x = 0;
     let c = 0;
-    const terms = sideExpr.replace(/ /g, '').replace(/-/g, '+-').split('+').filter(Boolean);
+     // Generic regex to find terms with any letter as variable
+    const terms = sideExpr.replace(/ /g, '').replace(/(?=[+-])/g, ' ').split(' ').filter(Boolean);
     
     terms.forEach(termStr => {
       let t = termStr.trim();
-      if (t.includes('x')) {
+      if (/[a-zA-Z]/.test(t)) { // Check for any letter
         if (t.includes('/')) {
-            const parts = t.split('x');
+            const parts = t.split(/[a-zA-Z]/); // Split by letter
             const [numeratorStr, denominatorStr] = (parts[0] ? parts[0] : '1' + parts[1]).split('/');
             
             let numerator = 1;
@@ -53,7 +98,7 @@ const parseEquation = (expr: string): Equation => {
             const denominator = parseFloat(denominatorStr);
             x += numerator / denominator;
         } else {
-            t = t.replace('x', '');
+            t = t.replace(/[a-zA-Z]/, ''); // Remove the letter
             if (t === '' || t === '+') x += 1;
             else if (t === '-') x -= 1;
             else x += parseFloat(t);
@@ -431,7 +476,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
 
     
