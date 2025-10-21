@@ -119,13 +119,14 @@ const parseEquation = (expr: string): Equation => {
 const formatTerm = (term: Term, isLeft: boolean) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        if (Math.abs(term.x) === 1) {
-             parts.push(term.x === 1 ? 'x' : '-x');
-        } else if (Math.abs(term.x - Math.round(term.x)) < 0.001) {
-            const roundedX = Math.round(term.x);
-            let xStr = `${roundedX}x`;
-            parts.push(xStr);
-        } else { // It's a fraction
+        const roundedX = Math.abs(term.x - Math.round(term.x)) < 0.001 ? Math.round(term.x) : term.x;
+
+        if (Math.abs(roundedX) === 1) {
+            parts.push(roundedX === 1 ? 'x' : '-x');
+        } else if (roundedX === Math.round(roundedX)) {
+             parts.push(`${roundedX}x`);
+        }
+        else { // It's a fraction
             const sign = term.x > 0 ? '' : '-';
             const absX = Math.abs(term.x);
             let xStr = '';
@@ -198,11 +199,11 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
     const items = [];
     const absValue = Math.abs(value);
     const isNegative = value < 0;
+    const isWholeNumber = Math.abs(absValue - Math.round(absValue)) < 0.001;
 
-    // Check if the value is close to a whole number
-    if (Math.abs(absValue - Math.round(absValue)) < 0.001) {
-        const fullUnits = Math.round(absValue);
-        for (let i = 0; i < fullUnits; i++) {
+    if (isWholeNumber) {
+        const roundedValue = Math.round(absValue);
+        for (let i = 0; i < roundedValue; i++) {
             items.push(
                 <div key={`full-${i}`} className={cn(
                     "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
@@ -230,14 +231,18 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
         }
         
         if (fractionalUnit > 0) {
-            const heightClass = isX ? `h-6` : `h-5`;
+            let heightFraction = 0.5; // Default for 1/2
+            if(Math.abs(fractionalUnit - 1/3) < 0.01) heightFraction = 1/3;
+            if(Math.abs(fractionalUnit - 2/3) < 0.01) heightFraction = 2/3;
+
+            const heightClass = isX ? `h-${Math.round(12 * heightFraction)}` : `h-${Math.round(10 * heightFraction)}`;
+
             items.push(
                  <div key="fraction" className={cn(
                     "relative flex items-center justify-center font-bold text-white rounded-t-lg shadow-md transition-all text-2xl border-b-4 overflow-hidden",
                      isX ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
                      isNegative && "bg-red-500 border-red-700",
-                     heightClass
-                )}>
+                )} style={{ height: `${isX ? 12 : 10 * 4 * heightFraction}px` }}>
                     <span className={cn('absolute', isX ? 'bottom-[0.8rem]' : 'bottom-[0.5rem]')}>{isX ? 'x' : '1'}</span>
                 </div>
             )
@@ -505,3 +510,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
