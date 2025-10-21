@@ -15,7 +15,6 @@ import { ScoreChart } from '@/components/score-chart';
 import { LogIn, LogOut } from 'lucide-react';
 import { AllUsers } from '@/components/all-users';
 import Link from 'next/link';
-import { TimeChart } from '@/components/time-chart';
 
 const ADMIN_EMAIL = "nimsarabro81@gmail.com";
 
@@ -108,7 +107,6 @@ export default function AdminPage() {
               <div className="lg:col-span-3">
                  <div className="space-y-8">
                     <ScoreChart />
-                    <TimeChart />
                 </div>
               </div>
             </section>
