@@ -119,22 +119,24 @@ const parseEquation = (expr: string): Equation => {
 const formatTerm = (term: Term, isLeft: boolean) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        const isFraction = Math.abs(term.x) > 0 && Math.abs(term.x) < 1;
-        let xStr = '';
-        if (isFraction) {
+        // If term.x is a whole number (or close to it due to float inaccuracies)
+        if (Math.abs(term.x - Math.round(term.x)) < 0.001) {
+            const roundedX = Math.round(term.x);
+            let xStr = roundedX === 1 ? 'x' : roundedX === -1 ? '-x' : `${roundedX}x`;
+            parts.push(xStr);
+        } else { // It's a fraction
             const sign = term.x > 0 ? '' : '-';
             const absX = Math.abs(term.x);
+            let xStr = '';
+            
             // This is a simplification for visualization, may need a proper fraction library for complex cases
-            if (Math.abs(absX * 3).toFixed(2) === '0.67') {
+             if (Math.abs(absX - 2/3) < 0.001) {
                  xStr = `${sign}2x/3`
             } else {
                 xStr = `${sign}x/${(1/absX).toFixed(0)}`;
             }
+            parts.push(xStr);
         }
-        else {
-            xStr = term.x === 1 ? 'x' : term.x === -1 ? '-x' : `${term.x}x`;
-        }
-        parts.push(xStr);
     }
     if (term.c !== 0) {
         if (parts.length > 0 && term.c > 0) {
@@ -476,5 +478,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
 
     
