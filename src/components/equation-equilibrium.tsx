@@ -42,7 +42,6 @@ const getVariableFromExpression = (expr: string): string => {
 
 const parseEquation = (expr: string): { equation: Equation, variable: string } => {
     const variable = getVariableFromExpression(expr);
-    const variableRegex = new RegExp(variable, 'g');
 
     // Handle complex nested structures like 2{5(2a+1)-3}=24
     expr = expr.replace(/\{/g, '(').replace(/\}/g, ')');
@@ -106,7 +105,7 @@ const parseEquation = (expr: string): { equation: Equation, variable: string } =
             const denominator = parseFloat(denominatorStr);
             x += numerator / denominator;
         } else {
-            t = t.replace(variableRegex, '');
+            t = t.replace(variable, '');
             if (t === '' || t === '+') x += 1;
             else if (t === '-') x -= 1;
             else x += parseFloat(t);
@@ -131,37 +130,13 @@ const formatTerm = (term: Term, variable: string) => {
     let parts: string[] = [];
     if (term.x !== 0) {
         const roundedX = Math.abs(term.x - Math.round(term.x)) < 0.001 ? Math.round(term.x) : term.x;
-        const isWhole = Math.abs(roundedX - Math.round(roundedX)) < 0.001;
 
-        if (isWhole) {
-             if (Math.abs(roundedX) === 1) {
-                parts.push(roundedX === 1 ? variable : `-${variable}`);
-            } else {
-                parts.push(`${roundedX}${variable}`);
-            }
-        } else { // It's a fraction
-            const sign = term.x > 0 ? '' : '-';
-            const absX = Math.abs(term.x);
-            let xStr = '';
-            
-            const toFraction = (decimal: number) => {
-                for(let den=1; den < 100; den++) {
-                    const num = decimal * den;
-                    if(Math.abs(num - Math.round(num)) < 0.001) {
-                        return {num: Math.round(num), den};
-                    }
-                }
-                return null;
-            }
-
-            const frac = toFraction(absX);
-            if (frac) {
-                xStr = `${sign}${frac.num > 1 ? frac.num : ''}${variable}/${frac.den}`;
-            } else {
-                xStr = `${sign}${absX.toFixed(2)}${variable}`;
-            }
-            parts.push(xStr);
+        if (Math.abs(roundedX) === 1) {
+            parts.push(roundedX > 0 ? variable : `-${variable}`);
+        } else if (roundedX !== 0) {
+             parts.push(`${roundedX}${variable}`);
         }
+
     }
     if (term.c !== 0) {
         const cValue = Math.abs(term.c - Math.round(term.c)) < 0.001 ? Math.round(term.c) : term.c.toFixed(2);
@@ -224,6 +199,8 @@ const TermBlock = ({ value, variable }: { value: number; variable: string | null
     const items = [];
     const absValue = Math.abs(value);
     const isNegative = value < 0;
+    
+    // Check if it's close enough to a whole number
     const isWholeNumber = Math.abs(absValue - Math.round(absValue)) < 0.001;
 
     if (isWholeNumber) {
@@ -311,7 +288,8 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const [isLevelSolved, setIsLevelSolved] = useState(false);
   const [userAnswer, setUserAnswer] = useState('');
   const [operationValue, setOperationValue] = useState('');
-  const [isHintUsed, setIsHintUsed] = useState(false);
+  const [isHintUsed, setIsHintUsed] = useState(isHintUsed);
+  const [levelStartTime, setLevelStartTime] = useState<number | null>(null);
   
   const { toast } = useToast();
   
@@ -325,6 +303,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setOperationValue('');
     setOperationCount(0);
     setIsHintUsed(false);
+    setLevelStartTime(Date.now());
   }, [currentLevelIndex]);
   
   const handleOperation = (op: Operation['op']) => {
@@ -374,6 +353,12 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
       let finalScore = score + 25;
       toast({ title: 'Correct!', description: `${variable} = ${finalAnswer}` });
       
+      const levelEndTime = Date.now();
+      if(levelStartTime && (levelEndTime - levelStartTime) / 1000 <= 30) {
+          finalScore += 10;
+          toast({ title: 'Time Bonus!', description: 'Solved within 30 seconds! +10 points.'});
+      }
+
       if (operationCount <= levels[currentLevelIndex].optimalSteps) {
           finalScore += 15;
           toast({ title: 'Efficiency Bonus!', description: `Solved in ${operationCount} steps! +15 points.` });
@@ -395,6 +380,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     setOperationValue('');
     setOperationCount(0);
     setIsHintUsed(false);
+    setLevelStartTime(Date.now());
     onScoreChange(Math.max(0, score - 5));
     toast({ variant: 'destructive', title: 'Reset Penalty', description: '-5 points for resetting.' });
   };
@@ -535,3 +521,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
