@@ -23,7 +23,7 @@ type AnimatedBall = BallType & {
 
 type LevelStage = 'prediction' | 'pairing';
 
-const levels = ['(-5)+(-7)', '(-7)+(3)', '(4)-(-2)', '(-5)-(-3)', '(-9.5)+(3)', '(1.5)-(-3.5)'];
+const levels = ["(-5)+(-7)", "(-7)+(3)", "(4)-(-2)", "(-5)-(-3)", "(-9.5)+(3)", "(1.5)-(-3.5)"];
 
 let nextId = 0;
 
@@ -378,11 +378,21 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-4">
+            <div className="flex justify-center items-center gap-8 mb-4 p-2 rounded-md bg-muted/50 border">
+                <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700"></div>
+                    <span className="font-sans font-semibold">ධන සංඛ්‍යා</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700"></div>
+                    <span className="font-sans font-semibold">ඍණ සංඛ්‍යා</span>
+                </div>
+            </div>
             <div
               ref={boardRef}
               className={cn(
-                'relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500',
+                'relative min-h-[300px] md:min-h-[400px] bg-grid p-6 flex flex-wrap gap-4 items-center justify-center transition-all duration-500 rounded-lg',
                 isLevelSolved && 'bg-green-500/10'
               )}
             >
