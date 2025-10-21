@@ -34,7 +34,16 @@ const levels = [
     { equation: "2{5(2a+1)-3}=24", optimalSteps: 5 },
 ];
 
-const parseEquation = (expr: string): Equation => {
+
+const getVariableFromExpression = (expr: string): string => {
+    const match = expr.match(/[a-zA-Z]/);
+    return match ? match[0] : 'x';
+};
+
+const parseEquation = (expr: string): { equation: Equation, variable: string } => {
+    const variable = getVariableFromExpression(expr);
+    const variableRegex = new RegExp(variable, 'g');
+
     // Handle complex nested structures like 2{5(2a+1)-3}=24
     expr = expr.replace(/\{/g, '(').replace(/\}/g, ')');
 
@@ -57,16 +66,16 @@ const parseEquation = (expr: string): Equation => {
                 if (!termMatch) return '';
                 
                 const coeffStr = termMatch[1];
-                const variable = termMatch[2];
+                const termVariable = termMatch[2];
 
                 let coeff = 1;
                 if (coeffStr === '-') coeff = -1;
                 else if (coeffStr !== '' && coeffStr !== '+') coeff = parseFloat(coeffStr);
 
                 const newCoeff = factor * coeff;
-                const newCoeffStr = newCoeff === 1 && variable ? '' : newCoeff === -1 && variable ? '-' : newCoeff.toString();
+                const newCoeffStr = newCoeff === 1 && termVariable ? '' : newCoeff === -1 && termVariable ? '-' : newCoeff.toString();
                 
-                return `${newCoeff > 0 ? '+' : ''}${newCoeffStr}${variable}`;
+                return `${newCoeff > 0 ? '+' : ''}${newCoeffStr}${termVariable}`;
             }).join('');
 
             current = current.replace(match[0], `(${expanded})`);
@@ -79,26 +88,25 @@ const parseEquation = (expr: string): Equation => {
   const parseSide = (sideExpr: string): Term => {
     let x = 0;
     let c = 0;
-     // Generic regex to find terms with any letter as variable
     const terms = sideExpr.replace(/ /g, '').replace(/(?=[+-])/g, ' ').split(' ').filter(Boolean);
     
     terms.forEach(termStr => {
       let t = termStr.trim();
-      if (/[a-zA-Z]/.test(t)) { // Check for any letter
+      if (t.includes(variable)) {
         if (t.includes('/')) {
-            const parts = t.split(/[a-zA-Z]/); // Split by letter
-            const [numeratorStr, denominatorStr] = (parts[0] ? parts[0] : '1' + parts[1]).split('/');
+            const parts = t.split(variable);
+            const fractionPart = parts[0] ? parts[0] + parts[1] : '1' + parts[1];
+            const [numeratorStr, denominatorStr] = fractionPart.split('/');
             
             let numerator = 1;
             if (numeratorStr && numeratorStr !== '+') {
                  if(numeratorStr === '-') numerator = -1;
                  else numerator = parseFloat(numeratorStr);
             }
-
             const denominator = parseFloat(denominatorStr);
             x += numerator / denominator;
         } else {
-            t = t.replace(/[a-zA-Z]/, ''); // Remove the letter
+            t = t.replace(variableRegex, '');
             if (t === '' || t === '+') x += 1;
             else if (t === '-') x -= 1;
             else x += parseFloat(t);
@@ -111,45 +119,62 @@ const parseEquation = (expr: string): Equation => {
   };
 
   return {
-    left: parseSide(leftStr),
-    right: parseSide(rightStr),
+    equation: {
+        left: parseSide(leftStr),
+        right: parseSide(rightStr),
+    },
+    variable
   };
 };
 
-const formatTerm = (term: Term, isLeft: boolean) => {
+const formatTerm = (term: Term, variable: string) => {
     let parts: string[] = [];
     if (term.x !== 0) {
         const roundedX = Math.abs(term.x - Math.round(term.x)) < 0.001 ? Math.round(term.x) : term.x;
+        const isWhole = Math.abs(roundedX - Math.round(roundedX)) < 0.001;
 
-        if (Math.abs(roundedX) === 1) {
-            parts.push(roundedX === 1 ? 'x' : '-x');
-        } else if (roundedX === Math.round(roundedX)) {
-             parts.push(`${roundedX}x`);
-        }
-        else { // It's a fraction
+        if (isWhole) {
+             if (Math.abs(roundedX) === 1) {
+                parts.push(roundedX === 1 ? variable : `-${variable}`);
+            } else {
+                parts.push(`${roundedX}${variable}`);
+            }
+        } else { // It's a fraction
             const sign = term.x > 0 ? '' : '-';
             const absX = Math.abs(term.x);
             let xStr = '';
             
-            // This is a simplification for visualization, may need a proper fraction library for complex cases
-             if (Math.abs(absX - 2/3) < 0.001) {
-                 xStr = `${sign}2x/3`
+            const toFraction = (decimal: number) => {
+                for(let den=1; den < 100; den++) {
+                    const num = decimal * den;
+                    if(Math.abs(num - Math.round(num)) < 0.001) {
+                        return {num: Math.round(num), den};
+                    }
+                }
+                return null;
+            }
+
+            const frac = toFraction(absX);
+            if (frac) {
+                xStr = `${sign}${frac.num > 1 ? frac.num : ''}${variable}/${frac.den}`;
             } else {
-                xStr = `${sign}x/${(1/absX).toFixed(0)}`;
+                xStr = `${sign}${absX.toFixed(2)}${variable}`;
             }
             parts.push(xStr);
         }
     }
     if (term.c !== 0) {
+        const cValue = Math.abs(term.c - Math.round(term.c)) < 0.001 ? Math.round(term.c) : term.c.toFixed(2);
         if (parts.length > 0 && term.c > 0) {
-            parts.push(`+ ${term.c}`);
+            parts.push(`+ ${cValue}`);
         } else {
-            parts.push(term.c.toString());
+            parts.push(cValue.toString());
         }
     }
     if (parts.length === 0) return '0';
-    return parts.join(' ').replace(/^\+ /, '').trim();
+    return parts.join(' ').replace(/^\+ /, '').replace(/\s\+\s/,' + ').replace(/\s\-\s/,' - ').trim();
 }
+
 
 // --- REDUCER LOGIC ---
 
@@ -195,7 +220,7 @@ function equationReducer(state: Equation, action: Action): Equation {
 
 // --- COMPONENTS ---
 
-const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
+const TermBlock = ({ value, variable }: { value: number; variable: string | null }) => {
     const items = [];
     const absValue = Math.abs(value);
     const isNegative = value < 0;
@@ -207,64 +232,61 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
             items.push(
                 <div key={`full-${i}`} className={cn(
                     "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
-                    isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
+                    variable ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
                     isNegative && "bg-red-500 border-red-700",
                 )}>
-                    {isX ? 'x' : '1'}
+                    {variable || '1'}
                 </div>
             );
         }
     } else { // It's a fraction
         const fullUnits = Math.floor(absValue);
-        const fractionalUnit = absValue - fullUnits;
+        const fractionalPart = absValue - fullUnits;
 
         for (let i = 0; i < fullUnits; i++) {
-            items.push(
+             items.push(
                 <div key={`full-frac-${i}`} className={cn(
                     "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
-                    isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
+                    variable ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
                     isNegative && "bg-red-500 border-red-700",
                 )}>
-                    {isX ? 'x' : '1'}
+                    {variable || '1'}
                 </div>
             );
         }
         
-        if (fractionalUnit > 0) {
-            let heightFraction = 0.5; // Default for 1/2
-            if(Math.abs(fractionalUnit - 1/3) < 0.01) heightFraction = 1/3;
-            if(Math.abs(fractionalUnit - 2/3) < 0.01) heightFraction = 2/3;
-
-            const heightClass = isX ? `h-${Math.round(12 * heightFraction)}` : `h-${Math.round(10 * heightFraction)}`;
+        if (fractionalPart > 0.001) {
+            const baseHeight = variable ? 48 : 40; // h-12 or h-10 in px
+            const height = baseHeight * fractionalPart;
 
             items.push(
                  <div key="fraction" className={cn(
                     "relative flex items-center justify-center font-bold text-white rounded-t-lg shadow-md transition-all text-2xl border-b-4 overflow-hidden",
-                     isX ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
+                     variable ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
                      isNegative && "bg-red-500 border-red-700",
-                )} style={{ height: `${isX ? 12 : 10 * 4 * heightFraction}px` }}>
-                    <span className={cn('absolute', isX ? 'bottom-[0.8rem]' : 'bottom-[0.5rem]')}>{isX ? 'x' : '1'}</span>
+                )} style={{ height: `${height}px` }}>
+                    <span className={cn('absolute -bottom-1/2 translate-y-[-50%]')}>{variable || '1'}</span>
                 </div>
             )
         }
     }
 
-    return <div className="flex flex-wrap items-center justify-center gap-2 p-1">{items}</div>;
+    return <div className="flex flex-wrap items-end justify-center gap-2 p-1">{items}</div>;
 };
 
-const EquationSide = ({ term }: { term: Term }) => {
+const EquationSide = ({ term, variable }: { term: Term, variable: string }) => {
   return (
     <Card className="w-full min-h-[120px] p-2 flex flex-col justify-center items-center bg-muted/50">
       <CardContent className="p-2 w-full flex-grow flex items-center justify-center">
          <div className="flex flex-col items-center gap-2">
-            {term.x !== 0 && <TermBlock value={term.x} isX />}
-            {term.c !== 0 && <TermBlock value={term.c} isX={false} />}
+            {term.x !== 0 && <TermBlock value={term.x} variable={variable} />}
+            {term.c !== 0 && <TermBlock value={term.c} variable={null} />}
             {(term.x === 0 && term.c === 0) && <span className="text-4xl font-bold text-muted-foreground">0</span>}
         </div>
       </CardContent>
        <CardFooter className="p-2 mt-auto w-full">
          <p className="font-mono text-xl font-bold text-center w-full bg-background/50 rounded p-1">
-             {formatTerm(term, true)}
+             {formatTerm(term, variable)}
          </p>
        </CardFooter>
     </Card>
@@ -283,6 +305,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
   const [initialState, setInitialState] = useState(initialEquation);
   const [equationState, dispatch] = useReducer(equationReducer, initialEquation);
+  const [variable, setVariable] = useState('x');
   const [operationCount, setOperationCount] = useState(0);
   
   const [isLevelSolved, setIsLevelSolved] = useState(false);
@@ -293,8 +316,9 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
   const { toast } = useToast();
   
   useEffect(() => {
-    const newInitialState = parseEquation(levels[currentLevelIndex].equation);
+    const { equation: newInitialState, variable: newVariable } = parseEquation(levels[currentLevelIndex].equation);
     setInitialState(newInitialState);
+    setVariable(newVariable);
     dispatch({ type: 'RESET', payload: newInitialState });
     setIsLevelSolved(false);
     setUserAnswer('');
@@ -348,7 +372,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
 
     if (isCorrect) {
       let finalScore = score + 25;
-      toast({ title: 'Correct!', description: `x = ${finalAnswer}` });
+      toast({ title: 'Correct!', description: `${variable} = ${finalAnswer}` });
       
       if (operationCount <= levels[currentLevelIndex].optimalSteps) {
           finalScore += 15;
@@ -383,21 +407,19 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
 
       let hintText = '';
       const {left, right} = equationState;
-      // Hint to gather constants
+      
       if(left.c !== 0 && right.x === 0) {
           hintText = `Try to get rid of the '${left.c}' on the left side.`;
       } 
-      // Hint to gather variables
       else if (left.x !== 0 && right.x !== 0) {
-          hintText = `Try to move the 'x' terms to one side.`;
+          hintText = `Try to move the '${variable}' terms to one side.`;
       }
-      // Hint to isolate x
       else if ((left.x !== 1 && left.x !== 0 && left.c === 0) || (right.x !== 1 && right.x !== 0 && right.c === 0)) {
            const xTerm = left.x !== 0 ? left.x : right.x;
-           hintText = `How can you turn '${formatTerm({x: xTerm, c: 0}, true)}' into just 'x'?`;
+           hintText = `How can you turn '${formatTerm({x: xTerm, c: 0}, variable)}' into just '${variable}'?`;
       }
       else {
-          hintText = 'Keep simplifying until you have x on one side and a number on the other!';
+          hintText = `Keep simplifying until you have ${variable} on one side and a number on the other!`;
       }
 
       toast({ title: 'Hint Used!', description: hintText });
@@ -429,7 +451,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
                     <ChevronLeft />
                 </Button>
                 <div className="text-center px-4">
-                    <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}: Solve for x</p>
+                    <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}: Solve for {variable}</p>
                     <p className="font-mono text-xl sm:text-2xl font-bold">{currentExpression}</p>
                 </div>
                 <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
@@ -449,9 +471,9 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
       
       <CardContent className="p-6 space-y-6">
         <div className="flex items-center justify-center gap-4">
-          <EquationSide term={equationState.left} />
+          <EquationSide term={equationState.left} variable={variable} />
           <div className="text-5xl font-bold text-muted-foreground">=</div>
-          <EquationSide term={equationState.right} />
+          <EquationSide term={equationState.right} variable={variable} />
         </div>
         
         <Card>
@@ -497,9 +519,10 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
             </div>
         ) : (
              <form onSubmit={handleSubmit} className="flex w-full max-w-md items-center space-x-2">
-                <p className="font-mono text-xl font-bold">x = </p>
+                <p className="font-mono text-xl font-bold">{variable} = </p>
                 <Input
                     type="number"
+                    step="any"
                     placeholder="?"
                     value={userAnswer}
                     onChange={(e) => setUserAnswer(e.target.value)}
@@ -512,5 +535,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
