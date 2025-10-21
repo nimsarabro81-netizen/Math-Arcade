@@ -31,7 +31,7 @@ const levels = [
     { equation: "5-3a/5=-7", optimalSteps: 3 },
     { equation: "2(3x-5)=8", optimalSteps: 3 },
     { equation: "5(3x-1)-2=23", optimalSteps: 4 },
-    { equation: "2(5(2a+1)-3)=24", optimalSteps: 5 },
+    { equation: "2{5(2a+1)-3}=24", optimalSteps: 5 },
 ];
 
 const parseEquation = (expr: string): Equation => {
@@ -197,33 +197,50 @@ const TermBlock = ({ value, isX }: { value: number; isX: boolean }) => {
     const items = [];
     const absValue = Math.abs(value);
     const isNegative = value < 0;
-    const fullUnits = Math.floor(absValue);
-    const fractionalUnit = absValue - fullUnits;
 
-    for (let i = 0; i < fullUnits; i++) {
-        items.push(
-            <div key={`full-${i}`} className={cn(
-                "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
-                isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
-                isNegative && "bg-red-500 border-red-700",
-            )}>
-                {isX ? 'x' : '1'}
-            </div>
-        );
-    }
-    
-    if (fractionalUnit > 0) {
-        const heightClass = isX ? `h-6` : `h-5`;
-        items.push(
-             <div key="fraction" className={cn(
-                "relative flex items-center justify-center font-bold text-white rounded-t-lg shadow-md transition-all text-2xl border-b-4 overflow-hidden",
-                 isX ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
-                 isNegative && "bg-red-500 border-red-700",
-                 heightClass
-            )}>
-                <span className={cn('absolute', isX ? 'bottom-[0.8rem]' : 'bottom-[0.5rem]')}>{isX ? 'x' : '1'}</span>
-            </div>
-        )
+    // Check if the value is close to a whole number
+    if (Math.abs(absValue - Math.round(absValue)) < 0.001) {
+        const fullUnits = Math.round(absValue);
+        for (let i = 0; i < fullUnits; i++) {
+            items.push(
+                <div key={`full-${i}`} className={cn(
+                    "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
+                    isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
+                    isNegative && "bg-red-500 border-red-700",
+                )}>
+                    {isX ? 'x' : '1'}
+                </div>
+            );
+        }
+    } else { // It's a fraction
+        const fullUnits = Math.floor(absValue);
+        const fractionalUnit = absValue - fullUnits;
+
+        for (let i = 0; i < fullUnits; i++) {
+            items.push(
+                <div key={`full-frac-${i}`} className={cn(
+                    "flex items-center justify-center font-bold text-white rounded-lg shadow-md transition-all text-2xl border-b-4",
+                    isX ? 'bg-blue-500 w-12 h-12 border-blue-700' : 'bg-green-500 w-10 h-10 border-green-700',
+                    isNegative && "bg-red-500 border-red-700",
+                )}>
+                    {isX ? 'x' : '1'}
+                </div>
+            );
+        }
+        
+        if (fractionalUnit > 0) {
+            const heightClass = isX ? `h-6` : `h-5`;
+            items.push(
+                 <div key="fraction" className={cn(
+                    "relative flex items-center justify-center font-bold text-white rounded-t-lg shadow-md transition-all text-2xl border-b-4 overflow-hidden",
+                     isX ? 'bg-blue-500 w-12 border-blue-700' : 'bg-green-500 w-10 border-green-700',
+                     isNegative && "bg-red-500 border-red-700",
+                     heightClass
+                )}>
+                    <span className={cn('absolute', isX ? 'bottom-[0.8rem]' : 'bottom-[0.5rem]')}>{isX ? 'x' : '1'}</span>
+                </div>
+            )
+        }
     }
 
     return <div className="flex flex-wrap items-center justify-center gap-2 p-1">{items}</div>;
@@ -478,7 +495,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
-
-    
