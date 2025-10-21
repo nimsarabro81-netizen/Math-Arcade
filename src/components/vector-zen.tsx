@@ -95,6 +95,20 @@ const createBallsFromParts = (positives: number[], negatives: number[]): BallTyp
   return newBalls;
 };
 
+const FormattedEquation = ({ equation }: { equation: string }) => {
+    const parts = equation.match(/(\(-?\d+(?:\.\d+)?\))([+\-])(\(-?\d+(?:\.\d+)?\))/);
+    if (parts) {
+        return (
+            <p className="font-mono text-2xl sm:text-3xl font-bold">
+                <span>{parts[1]}</span>
+                <span className="text-accent">{parts[2]}</span>
+                <span>{parts[3]}</span>
+            </p>
+        );
+    }
+    return <p className="font-mono text-2xl sm:text-3xl font-bold">{equation}</p>;
+};
+
 interface VectorZenProps {
     isGameStarted: boolean;
     username: string;
@@ -354,7 +368,7 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
                 </Button>
                 <div className="text-center px-4">
                   <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
-                  <p className="font-mono text-2xl sm:text-3xl font-bold">{levels[currentLevelIndex]}</p>
+                  <FormattedEquation equation={levels[currentLevelIndex]} />
                 </div>
                 <Button
                   onClick={goToNextLevel}
