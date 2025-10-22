@@ -1,19 +1,78 @@
-
+/**
+ * @fileoverview Firestore Security Rules for Math Arcade.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes simplicity and security. It enforces a public-read, admin-write model
+ * for game settings. User rankings are publicly readable to support leaderboards,
+ * but write access is not granted via security rules. Data validation is relaxed to
+ * facilitate rapid prototyping, focusing instead on preventing unauthorized access.
+ *
+ * Data Structure:
+ * - /gameSettings: Stores global game settings (e.g., active status). Publicly readable,
+ *   writeable only by backend via the Firebase Admin SDK.
+ * - /userRanks: Stores VectorZen game rankings. Publicly readable, but only writeable
+ *   by backend via the Firebase Admin SDK.
+ * - /algebraRanks: Stores Algebra Arena game rankings. Publicly readable, but only writeable
+ *   by backend via the Firebase Admin SDK.
+ * - /equationRanks: Stores Equation Equilibrium game rankings. Publicly readable, but only writeable
+ *   by backend via the Firebase Admin SDK.
+ *
+ * Key Security Decisions:
+ * - No user-specific data: This version does not manage any data specific to individual users.
+ * - Public leaderboards: User ranking data is exposed for public leaderboards.
+ * - Backend-only writes: All write operations are intended to be performed by a secure backend
+ *   using the Firebase Admin SDK, bypassing security rules.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /userRanks/{rankId} {
-      allow read, create, delete: if request.auth != null;
+
+    /**
+     * @description Manages read access to game settings.
+     * @path /gameSettings/{gameSettingId}
+     * @allow (get, list) Any user can read game settings.
+     * @deny (create, update, delete) No user can write game settings.
+     * @principle Allows any user to read game settings, but restricts write access.
+     */
+    match /gameSettings/{gameSettingId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
-    match /algebraRanks/{rankId} {
-      allow read, create, delete: if request.auth != null;
+
+    /**
+     * @description Manages read access to VectorZen user rankings.
+     * @path /userRanks/{userRankId}
+     * @allow (get, list) Any user can read VectorZen rankings.
+     * @deny (create, update, delete) No user can write VectorZen rankings.
+     * @principle Allows any user to read user ranks, but restricts write access.
+     */
+    match /userRanks/{userRankId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
-    match /equationRanks/{rankId} {
-      allow read, create, delete: if request.auth != null;
+
+    /**
+     * @description Manages read access to Algebra Arena user rankings.
+     * @path /algebraRanks/{algebraRankId}
+     * @allow (get, list) Any user can read Algebra Arena rankings.
+     * @deny (create, update, delete) No user can write Algebra Arena rankings.
+     * @principle Allows any user to read user ranks, but restricts write access.
+     */
+    match /algebraRanks/{algebraRankId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
-    match /gameSettings/{gameId} {
-      allow read, write: if request.auth != null;
+
+    /**
+     * @description Manages read access to Equation Equilibrium user rankings.
+     * @path /equationRanks/{equationRankId}
+     * @allow (get, list) Any user can read Equation Equilibrium rankings.
+     * @deny (create, update, delete) No user can write Equation Equilibrium rankings.
+     * @principle Allows any user to read user ranks, but restricts write access.
+     */
+    match /equationRanks/{equationRankId} {
+        allow get, list: if true;
+        allow create, update, delete: if false;
     }
   }
 }
