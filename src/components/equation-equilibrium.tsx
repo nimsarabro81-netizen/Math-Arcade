@@ -126,12 +126,44 @@ const parseEquation = (expr: string): { equation: Equation, variable: string } =
   };
 };
 
+function toFraction(num: number, tolerance = 1.0E-6): {n: number, d: number} | null {
+    if (Math.abs(num - Math.round(num)) < tolerance) {
+        return null; // It's a whole number
+    }
+    let h1=1; let h2=0;
+    let k1=0; let k2=1;
+    let b = num;
+    do {
+        let a = Math.floor(b);
+        let aux = h1; h1 = a*h1+h2; h2 = aux;
+        aux = k1; k1 = a*k1+k2; k2 = aux;
+        b = 1/(b-a);
+    } while (Math.abs(num-h1/k1) > num*tolerance);
+    
+    return {n: h1, d: k1};
+}
+
+
 const formatTerm = (term: Term, variable: string) => {
     let parts: string[] = [];
     if (term.x !== 0) {
         const roundedX = Math.abs(term.x - Math.round(term.x)) < 0.001 ? Math.round(term.x) : term.x;
 
-        if (Math.abs(roundedX) === 1) {
+        const fraction = toFraction(Math.abs(roundedX));
+
+        if (fraction) {
+            const sign = roundedX < 0 ? '-' : '';
+            let numerator = fraction.n;
+            let denominator = fraction.d;
+            
+            let numeratorStr = '';
+            if (numerator !== 1) {
+                numeratorStr = String(numerator);
+            }
+            
+            parts.push(`${sign}${numeratorStr}${variable}/${denominator}`);
+        }
+        else if (Math.abs(roundedX) === 1) {
             parts.push(roundedX > 0 ? variable : `-${variable}`);
         } else if (roundedX !== 0) {
              parts.push(`${roundedX}${variable}`);
