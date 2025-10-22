@@ -28,52 +28,57 @@ const levels = ["(-5)+(-7)", "(-7)+(3)", "(4)-(-2)", "(-5)-(-3)", "(-9.5)+(3)", 
 let nextId = 0;
 
 const getEquationParts = (str: string): { positives: number[], negatives: number[], answer: number } => {
-  try {
-    const answer = new Function('return ' + str.replace(/--/g, '+'))();
-
-    let positives: number[] = [];
-    let negatives: number[] = [];
-
-    // Improved parsing for equations like (4)-(-2)
-    const sanitized = str.replace(/\s/g, '').replace(')(', ')+(').replace('--', '+');
-    const parts = sanitized.match(/\(-?\d+(\.\d+)?\)/g) || [];
-
-    for (const part of parts) {
-      const num = parseFloat(part.replace(/[()]/g, ''));
-      if (num > 0) {
-        positives.push(num);
-      } else {
-        negatives.push(Math.abs(num));
-      }
-    }
-    
-    // This handles cases like `(4)-(-2)` being parsed as `(4)` and `(-2)` initially.
-    // The subtraction in the middle is the operation. So for prediction, we should show
-    // the balls as they are in the parentheses. `4` is positive, `-2` is negative.
-    // The `flip` button handles the operation. Let's refine the parsing.
-    
-    // Resetting for a clearer logic pass.
-    positives = [];
-    negatives = [];
-    
-    // This regex will find all numbers within parentheses.
-    const rawNumbers = str.match(/\(-?\d+(?:\.\d+)?\)/g);
-    if (rawNumbers) {
-      rawNumbers.forEach(numStr => {
-        const num = parseFloat(numStr.replace(/[()]/g, ''));
-        if (num > 0) {
-          positives.push(num);
-        } else {
-          negatives.push(Math.abs(num));
-        }
-      });
-    }
-
-    return { positives, negatives, answer };
-  } catch (e) {
-    console.error('Could not parse equation:', e);
+  let positives: number[] = [];
+  let negatives: number[] = [];
+  
+  // This regex finds all numbers, positive or negative, including decimals.
+  const numbers = str.match(/-?\d+(\.\d+)?/g);
+  if (!numbers || numbers.length < 2) {
+    console.error('Could not parse equation:', str);
     return { positives: [], negatives: [], answer: 0 };
   }
+  
+  const num1 = parseFloat(numbers[0]);
+  const num2 = parseFloat(numbers[1]);
+
+  // Determine the operation by looking for the operator between the parentheses.
+  const operatorMatch = str.match(/\)([+\-])\(/);
+  const operator = operatorMatch ? operatorMatch[1] : '+';
+
+  let answer: number;
+  if (operator === '+') {
+    answer = num1 + num2;
+  } else {
+    answer = num1 - num2;
+  }
+
+  // Populate positives and negatives based on the raw numbers in the parentheses
+  [num1, num2].forEach(num => {
+    if (num > 0) {
+      positives.push(num);
+    } else {
+      negatives.push(Math.abs(num));
+    }
+  });
+
+  // Special handling for the visual representation of subtraction
+  // (4)-(-2) should visually start with 4 positive and 2 negative balls
+  // before the flip operation turns the negatives into positives.
+  const equationForVisuals = str.replace(/\s/g, '');
+  if (equationForVisuals.includes(')-(')) {
+      const parts = equationForVisuals.split(')-(');
+      const firstNum = parseFloat(parts[0].replace('(', ''));
+      const secondNum = parseFloat(parts[1].replace(')', ''));
+      
+      positives = [];
+      negatives = [];
+      
+      if (firstNum > 0) positives.push(firstNum); else negatives.push(Math.abs(firstNum));
+      if (secondNum > 0) positives.push(secondNum); else negatives.push(Math.abs(secondNum));
+  }
+
+
+  return { positives, negatives, answer };
 };
 
 
