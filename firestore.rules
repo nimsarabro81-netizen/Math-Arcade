@@ -1,35 +1,27 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Game Settings: Allow anyone to read, but only the admin to write.
-    match /gameSettings/{gameSettingId} {
+    // Game settings can be read by anyone, but only written by the admin.
+    match /gameSettings/{gameId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
     }
 
-    // User Ranks: Allow anyone to read, and any authenticated user to create their own rank.
-    // Users can only update or delete their own scores.
-    match /userRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    }
+    // Leaderboard collections
+    match /(userRanks|algebraRanks|equationRanks)/{rankId} {
+      // Anyone can read the leaderboards.
+      allow list, get: if true;
+      
+      // Only authenticated users can create their own score.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
 
-    // Algebra Ranks: Same rules as userRanks.
-    match /algebraRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    }
+      // Only the admin can delete scores.
+      allow delete: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
 
-    // Equation Ranks: Same rules as userRanks.
-    match /equationRanks/{rankId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // No one can update scores directly to prevent tampering. New scores should be new documents.
+      allow update: if false;
     }
   }
 }
