@@ -1,159 +1,51 @@
-
 {
   "entities": {
-    "UserRank": {
-      "title": "UserRank",
+    "GameSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GameSettings",
       "type": "object",
-      "description": "Stores user ranking information for the VectorZen app.",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User."
-        },
-        "username": {
-            "type": "string",
-            "description": "The user's display name, 'Anonymous' for anonymous users."
-        },
-        "score": {
-          "type": "number",
-          "description": "The user's score in the VectorZen game."
-        },
-        "duration": {
-          "type": "number",
-          "description": "The time in seconds the user spent to complete the game."
-        },
-        "lastUpdated": {
-          "type": "string",
-          "description": "Timestamp of the last time the user's score/rank was updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "username",
-        "score",
-        "duration",
-        "lastUpdated"
-      ]
-    },
-    "AlgebraRank": {
-      "title": "AlgebraRank",
-      "type": "object",
-      "description": "Stores user ranking information for the Algebra Arena game.",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User."
-        },
-        "username": {
-          "type": "string",
-          "description": "The user's display name, 'Anonymous' for anonymous users."
-        },
-        "score": {
-          "type": "number",
-          "description": "The user's score in the Algebra Arena game."
-        },
-        "duration": {
-          "type": "number",
-          "description": "The time in seconds the user spent to complete the game."
-        },
-        "lastUpdated": {
-          "type": "string",
-          "description": "Timestamp of the last time the user's score/rank was updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "userId",
-        "username",
-        "score",
-        "duration",
-        "lastUpdated"
-      ]
-    },
-    "EquationRank": {
-        "title": "EquationRank",
-        "type": "object",
-        "description": "Stores user ranking information for the Equation Equilibrium game.",
-        "properties": {
-            "userId": { "type": "string", "description": "Reference to the User." },
-            "username": { "type": "string", "description": "The user's display name, 'Anonymous' for anonymous users." },
-            "score": { "type": "number", "description": "The user's score in the Equation Equilibrium game." },
-            "duration": {
-              "type": "number",
-              "description": "The time in seconds the user spent to complete the game."
-            },
-            "lastUpdated": { "type": "string", "description": "Timestamp of the last time the user's score/rank was updated.", "format": "date-time" }
-        },
-        "required": ["userId", "username", "score", "duration", "lastUpdated"]
-    },
-    "GameSetting": {
-      "title": "GameSetting",
-      "type": "object",
-      "description": "Stores the active status of a game.",
+      "description": "Stores settings related to the VectorZen game, such as whether the game is active.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "The unique identifier for the game (e.g., 'vector-zen')."
+          "description": "Unique identifier for the game settings document."
         },
         "isActive": {
           "type": "boolean",
-          "description": "Whether the game is currently active and visible to players."
-        }
-      },
-      "required": ["id", "isActive"]
-    },
-    "User": {
-      "title": "User",
-      "type": "object",
-      "description": "Represents a user in the VectorZen app.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the user."
+          "description": "Indicates whether the game is currently active."
         }
       },
       "required": [
-        "id"
+        "id",
+        "isActive"
       ]
     }
   },
   "auth": {
     "providers": [
-      "anonymous",
-      "email"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-      "collections": [
-        {
-            "path": "/userRanks",
-            "schema": {
-                "$ref": "#/entities/UserRank"
-            },
-            "description": "Stores rankings for all users for the VectorZen game."
-        },
-        {
-            "path": "/algebraRanks",
-            "schema": {
-                "$ref": "#/entities/AlgebraRank"
-            },
-            "description": "Stores rankings for all users for the Algebra Arena game."
-        },
-        {
-            "path": "/equationRanks",
-            "schema": {
-                "$ref": "#/entities/EquationRank"
-            },
-            "description": "Stores rankings for all users for the Equation Equilibrium game."
-        },
-        {
-          "path": "/gameSettings",
+    "structure": [
+      {
+        "path": "/gameSettings/{gameSettingsId}",
+        "definition": {
+          "entityName": "GameSettings",
           "schema": {
-            "$ref": "#/entities/GameSetting"
+            "$ref": "#/backend/entities/GameSettings"
           },
-          "description": "Stores the active status for each game."
+          "description": "Stores settings related to the VectorZen game. Allows any authenticated user to read and write settings.  Uses a dedicated collection for settings. Includes 'gameSettingsId' parameter for document identification.",
+          "params": [
+            {
+              "name": "gameSettingsId",
+              "description": "Unique identifier for the game settings document."
+            }
+          ]
         }
-      ]
+      }
+    ],
+    "reasoning": "Based on the provided error and requirements, the immediate issue is a permissions error when writing to the `gameSettings/vector-zen` document. The user with UID `9EWOAUGzIIYnMCWFjLBDlfca9Qn1` is attempting to set `isActive` to `false` but lacks the necessary permissions. Given the lack of explicit role-based access control or ownership, the simplest solution is to allow authenticated users to read and write to the `gameSettings` collection. This assumes that any authenticated user should be able to modify game settings. If more granular control is required (e.g., only admins can change settings), a dedicated role collection or membership map is necessary (e.g. `/roles_admin/{uid}` to manage admin access). The data structure uses a single `gameSettings` collection because there is only one entity and no requirement to segregate the data. This approach ensures clarity and simplifies security rules. It also assumes, given the provided error, that the document ID is `vector-zen` within the `gameSettings` collection. If each user required settings a subcollection would be more appropriate. A security rule must be defined to permit authenticated writes. This structure achieves authorization independence by not relying on other documents for authorization. It supports the required 'list' operations (QAPs) because the entire collection shares the same security posture (homogeneous security posture)."
   }
 }

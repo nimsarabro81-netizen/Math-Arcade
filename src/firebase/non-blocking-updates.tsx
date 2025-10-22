@@ -27,7 +27,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
       })
     )
   })
-  // Execution continues immediately.
+  // Execution continues immediately
 }
 
 
@@ -37,7 +37,6 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
  * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
-  // This function adds a document to a specified collection.
   const promise = addDoc(colRef, data)
     .catch(error => {
       errorEmitter.emit(
