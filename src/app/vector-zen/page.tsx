@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirebase } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection, doc } from 'firebase/firestore';
 import { Award, Gamepad2, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,8 +68,8 @@ export default function VectorZenPage() {
         duration: duration,
         lastUpdated: new Date().toISOString(),
       };
-      const ranksCollection = collection(firestore, 'userRanks');
-      addDocumentNonBlocking(ranksCollection, rankData);
+      const rankDocRef = doc(firestore, 'userRanks', user.uid);
+      setDocumentNonBlocking(rankDocRef, rankData, { merge: true });
     }
   }, [user, firestore, identity]);
 

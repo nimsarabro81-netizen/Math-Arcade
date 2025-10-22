@@ -3,25 +3,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Game settings can be read by anyone, but only written by the admin.
+    // Game settings are publicly readable, but only writable by the admin.
     match /gameSettings/{gameId} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
     }
 
-    // Leaderboard collections
-    match /(userRanks|algebraRanks|equationRanks)/{rankId} {
-      // Anyone can read the leaderboards.
-      allow list, get: if true;
-      
-      // Only authenticated users can create their own score.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    // --- Leaderboard Rules ---
 
-      // Only the admin can delete scores.
+    // VectorZen Leaderboard
+    match /userRanks/{userId} {
+      // Anyone can read the leaderboard.
+      allow list: if true;
+      // Only the authenticated user can create or update their own score.
+      allow write: if request.auth != null && request.auth.uid == userId;
+      // Admin can delete scores.
       allow delete: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
+    }
 
-      // No one can update scores directly to prevent tampering. New scores should be new documents.
-      allow update: if false;
+    // Algebra Arena Leaderboard
+    match /algebraRanks/{userId} {
+      allow list: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
+    }
+
+    // Equation Equilibrium Leaderboard
+    match /equationRanks/{userId} {
+      allow list: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
     }
   }
 }

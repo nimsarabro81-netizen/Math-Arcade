@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, useFirebase } from '@/firebase';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { doc } from 'firebase/firestore';
 import Link from 'next/link';
 import { Award, Home } from 'lucide-react';
 import { usePlayerIdentity } from '@/hooks/use-player-identity';
@@ -51,16 +51,16 @@ export default function EquationPage() {
 
     const saveScore = useCallback((finalScoreValue: number, duration: number) => {
         if (user && firestore && identity) {
-        const rankData = {
-            userId: user.uid,
-            username: identity.username,
-            avatar: identity.avatar,
-            score: finalScoreValue,
-            duration: duration,
-            lastUpdated: new Date().toISOString(),
-        };
-        const ranksCollection = collection(firestore, 'equationRanks');
-        addDocumentNonBlocking(ranksCollection, rankData);
+            const rankData = {
+                userId: user.uid,
+                username: identity.username,
+                avatar: identity.avatar,
+                score: finalScoreValue,
+                duration: duration,
+                lastUpdated: new Date().toISOString(),
+            };
+            const rankDocRef = doc(firestore, 'equationRanks', user.uid);
+            setDocumentNonBlocking(rankDocRef, rankData, { merge: true });
         }
     }, [user, firestore, identity]);
 
