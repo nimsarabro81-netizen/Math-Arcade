@@ -1,26 +1,35 @@
-/**
- * @fileoverview Firestore Security Rules for the VectorZen game settings.
- *
- * Core Philosophy:
- * This ruleset allows any authenticated user to read and write game settings.
- * This is based on the assumption that all authenticated users should be able to modify these settings.
- * If more granular control is required, a role-based access control system (e.g., an admin role) should be implemented.
- *
- * Data Structure:
- * All game settings are stored in a single top-level collection: `/gameSettings/{gameSettingsId}`.
- *
- * Key Security Decisions:
- * - Allows any authenticated user to read and write game settings.
- * - Does not implement role-based access control.
- * - Assumes a homogeneous security posture across all documents within the `gameSettings` collection.
- * - Authorization independence: No reliance on external documents for authorization.
- */
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /gameSettings/{gameSettingsId} {
-      allow read, write: if request.auth != null;
+    // Game Settings: Allow anyone to read, but only the admin to write.
+    match /gameSettings/{gameSettingId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'nimsarabro81@gmail.com';
+    }
+
+    // User Ranks: Allow anyone to read, and any authenticated user to create their own rank.
+    // Users can only update or delete their own scores.
+    match /userRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Algebra Ranks: Same rules as userRanks.
+    match /algebraRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Equation Ranks: Same rules as userRanks.
+    match /equationRanks/{rankId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
   }
 }
