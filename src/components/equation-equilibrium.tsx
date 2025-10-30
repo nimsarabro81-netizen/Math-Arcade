@@ -346,14 +346,6 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
       return;
     }
 
-    if (op === 'divide') {
-        if (equationState.left.c % value !== 0 || equationState.left.x % value !== 0 || 
-            equationState.right.c % value !== 0 || equationState.right.x % value !== 0) {
-            toast({ variant: 'destructive', title: 'Invalid Division', description: "All terms must be evenly divisible by that number." });
-            return;
-        }
-    }
-
     dispatch({ type: 'APPLY_OPERATION', payload: { op, value } });
     setOperationCount(prev => prev + 1);
     setOperationValue('');
