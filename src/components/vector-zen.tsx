@@ -383,10 +383,16 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
           <CardHeader className="p-4 border-b">
             <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
               <div className="flex items-center gap-2">
+                <Button onClick={goToPrevLevel} variant="outline" size="icon" disabled={currentLevelIndex === 0}>
+                  <ChevronLeft />
+                </Button>
                 <div className="text-center px-4">
                   <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
                   <FormattedEquation equation={levels[currentLevelIndex]} />
                 </div>
+                <Button onClick={goToNextLevel} variant="outline" size="icon" disabled={currentLevelIndex === levels.length - 1 || !isLevelSolved}>
+                  <ChevronRight />
+                </Button>
               </div>
               <div className="flex items-center gap-4">
                  {levelStage === 'pairing' && (
@@ -404,11 +410,11 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
             <div className="flex justify-center items-center gap-8 mb-4 p-2 rounded-md bg-muted/50 border">
                 <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-red-700"></div>
-                    <span className="font-sans font-semibold">Positive Numbers</span>
+                    <span className="font-sans font-semibold">ධන සංඛ්‍යා</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-blue-500 border-2 border-blue-700"></div>
-                    <span className="font-sans font-semibold">Negative Numbers</span>
+                    <span className="font-sans font-semibold">ඍණ සංඛ්‍යා</span>
                 </div>
             </div>
             <div
