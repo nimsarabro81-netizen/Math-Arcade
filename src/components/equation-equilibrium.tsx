@@ -25,12 +25,6 @@ const levels = [
     { equation: "3x-2=4", optimalSteps: 2 },
     { equation: "x/2-1=4", optimalSteps: 2 },
     { equation: "y/3-1=4", optimalSteps: 2 },
-    { equation: "2x/3=4", optimalSteps: 2 },
-    { equation: "2y/3-1=5", optimalSteps: 3 },
-    { equation: "5-3a/5=-7", optimalSteps: 3 },
-    { equation: "2(3x-5)=8", optimalSteps: 3 },
-    { equation: "5(3x-1)-2=23", optimalSteps: 4 },
-    { equation: "2{5(2a+1)-3}=24", optimalSteps: 5 },
 ];
 
 
@@ -567,9 +561,3 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
-
-    
-
-    
-
-    
