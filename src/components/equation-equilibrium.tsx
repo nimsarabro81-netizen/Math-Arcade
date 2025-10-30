@@ -177,7 +177,7 @@ const formatTerm = (term: Term, variable: string) => {
         const absX = Math.abs(roundedX);
         const sign = roundedX < 0 ? '-' : '';
 
-        if (absX === 1) {
+        if (Math.abs(absX - 1) < 0.001) {
             parts.push(`${sign}${variable}`);
         } else {
             const fraction = toFraction(absX);
@@ -568,5 +568,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
 
     
