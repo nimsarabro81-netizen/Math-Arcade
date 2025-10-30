@@ -543,18 +543,12 @@ export function AlgebraArena({ score, onScoreChange, onGameComplete }: AlgebraAr
             <CardHeader className="p-4 border-b">
                 <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0}>
-                            <ChevronLeft />
-                        </Button>
                         <div className="text-center px-4">
                             <p className="text-sm font-medium text-muted-foreground">
                                 Level {currentLevelIndex + 1}: {isFactoringLevel ? 'Factor the Expression' : 'Simplify the Expression'}
                             </p>
                             <p className="font-mono text-xl sm:text-2xl font-bold">{formattedExpression}</p>
                         </div>
-                        <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
-                            <ChevronRight />
-                        </Button>
                     </div>
                     <div className="flex items-center gap-2">
                         {isFactoringLevel && (
@@ -653,5 +647,3 @@ export function AlgebraArena({ score, onScoreChange, onGameComplete }: AlgebraAr
     </DndProvider>
   );
 }
-
-    

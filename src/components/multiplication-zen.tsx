@@ -197,16 +197,10 @@ export function MultiplicationZen({ isGameStarted, score, onScoreChange, onGameC
       <CardHeader className="p-4 border-b">
         <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button onClick={goToPrevLevel} variant="outline" size="icon" aria-label="Previous Level" disabled={currentLevelIndex === 0 || allLevelsComplete}>
-              <ChevronLeft />
-            </Button>
             <div className="text-center px-4">
               <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
               <p className="font-mono text-2xl sm:text-3xl font-bold">{levels[currentLevelIndex]}</p>
             </div>
-            <Button onClick={goToNextLevel} variant="outline" size="icon" aria-label="Next Level" disabled={!isLevelSolved || allLevelsComplete}>
-              <ChevronRight />
-            </Button>
           </div>
           <div className="flex items-center gap-4">
              <Button onClick={resetLevel} variant="ghost" size="icon" aria-label="Reset Level" className="border" disabled={allLevelsComplete}>
