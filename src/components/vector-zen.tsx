@@ -383,16 +383,10 @@ export function VectorZen({ isGameStarted, score, onScoreChange, onGameComplete 
           <CardHeader className="p-4 border-b">
             <div className="flex flex-col sm:flex-row gap-2 items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button onClick={goToPrevLevel} variant="outline" size="icon" disabled={currentLevelIndex === 0}>
-                  <ChevronLeft />
-                </Button>
                 <div className="text-center px-4">
                   <p className="text-sm font-medium text-muted-foreground">Level {currentLevelIndex + 1}</p>
                   <FormattedEquation equation={levels[currentLevelIndex]} />
                 </div>
-                <Button onClick={goToNextLevel} variant="outline" size="icon" disabled={currentLevelIndex === levels.length - 1 || !isLevelSolved}>
-                  <ChevronRight />
-                </Button>
               </div>
               <div className="flex items-center gap-4">
                  {levelStage === 'pairing' && (
