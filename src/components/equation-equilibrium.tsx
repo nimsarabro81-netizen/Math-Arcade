@@ -126,10 +126,12 @@ const parseEquation = (expr: string): { equation: Equation, variable: string } =
   };
 };
 
-function toFraction(num: number, tolerance = 1.0E-6): {n: number, d: number} | null {
+
+function toFraction(num: number, tolerance = 1.0E-6): string {
     if (Math.abs(num - Math.round(num)) < tolerance) {
-        return null; // It's a whole number
+        return Math.round(num).toString();
     }
+    
     let h1=1; let h2=0;
     let k1=0; let k2=1;
     let b = num;
@@ -139,39 +141,39 @@ function toFraction(num: number, tolerance = 1.0E-6): {n: number, d: number} | n
         aux = k1; k1 = a*k1+k2; k2 = aux;
         b = 1/(b-a);
     } while (Math.abs(num-h1/k1) > num*tolerance);
+
+    // If denominator is 1, it's a whole number
+    if (k1 === 1) return String(h1);
     
-    return {n: h1, d: k1};
+    return `${h1}/${k1}`;
 }
 
+const formatNumber = (num: number) => {
+    const rounded = parseFloat(num.toPrecision(10));
+    return toFraction(rounded);
+}
 
 const formatTerm = (term: Term, variable: string) => {
     let parts: string[] = [];
     if (term.x !== 0) {
-        const roundedX = Math.abs(term.x - Math.round(term.x)) < 0.001 ? Math.round(term.x) : term.x;
+        const roundedX = parseFloat(term.x.toPrecision(10));
+        const absX = Math.abs(roundedX);
+        const sign = roundedX < 0 ? '-' : '';
 
-        const fraction = toFraction(Math.abs(roundedX));
-
-        if (fraction) {
-            const sign = roundedX < 0 ? '-' : '';
-            let numerator = fraction.n;
-            let denominator = fraction.d;
-            
-            let numeratorStr = '';
-            if (numerator !== 1) {
-                numeratorStr = String(numerator);
+        if (absX === 1) {
+            parts.push(`${sign}${variable}`);
+        } else {
+            const fraction = toFraction(absX);
+            if (fraction.includes('/')) {
+                const [n, d] = fraction.split('/');
+                parts.push(`${sign}${n}${variable}/${d}`);
+            } else {
+                parts.push(`${sign}${fraction}${variable}`);
             }
-            
-            parts.push(`${sign}${numeratorStr}${variable}/${denominator}`);
         }
-        else if (Math.abs(roundedX) === 1) {
-            parts.push(roundedX > 0 ? variable : `-${variable}`);
-        } else if (roundedX !== 0) {
-             parts.push(`${roundedX}${variable}`);
-        }
-
     }
     if (term.c !== 0) {
-        const cValue = Math.abs(term.c - Math.round(term.c)) < 0.001 ? Math.round(term.c) : term.c.toFixed(2);
+        const cValue = formatNumber(term.c);
         if (parts.length > 0 && term.c > 0) {
             parts.push(`+ ${cValue}`);
         } else {
@@ -179,7 +181,7 @@ const formatTerm = (term: Term, variable: string) => {
         }
     }
     if (parts.length === 0) return '0';
-    return parts.join(' ').replace(/^\+ /, '').replace(/\s\+\s/,' + ').replace(/\s\-\s/,' - ').trim();
+    return parts.join(' ').replace(/^ /, '').replace(/\s\+\s/,' + ').replace(/\s\-\s/,' - ').trim();
 }
 
 
@@ -205,9 +207,9 @@ function equationReducer(state: Equation, action: Action): Equation {
               term.c *= value;
               break;
             case 'divide':
-              term.x /= value;
-              term.c /= value;
-              break;
+                term.x /= value;
+                term.c /= value;
+                break;
           }
            // Round to avoid floating point inaccuracies
            term.x = parseFloat(term.x.toPrecision(10));
@@ -545,3 +547,5 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
