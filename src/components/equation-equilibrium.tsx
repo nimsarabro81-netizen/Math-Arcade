@@ -22,10 +22,9 @@ const initialEquation: Equation = {
 };
 
 const levels = [
-    { equation: "2x-1=3", optimalSteps: 2 },
-    { equation: "3x+2=8", optimalSteps: 2 },
-    { equation: "x/2-3=5", optimalSteps: 2 },
-    { equation: "x/3+2=3", optimalSteps: 2 },
+    { equation: "3x-2=4", optimalSteps: 2 },
+    { equation: "x/2-1=4", optimalSteps: 2 },
+    { equation: "y/3-1=4", optimalSteps: 2 },
     { equation: "2x/3=4", optimalSteps: 2 },
     { equation: "2y/3-1=5", optimalSteps: 3 },
     { equation: "5-3a/5=-7", optimalSteps: 3 },
@@ -183,7 +182,11 @@ const formatTerm = (term: Term, variable: string) => {
             const fraction = toFraction(absX);
             if (fraction.includes('/')) {
                 const [n, d] = fraction.split('/');
-                parts.push(`${sign}${n}${variable}/${d}`);
+                if (n === '1') {
+                    parts.push(`${sign}${variable}/${d}`);
+                } else {
+                    parts.push(`${sign}${n}${variable}/${d}`);
+                }
             } else {
                 parts.push(`${sign}${fraction}${variable}`);
             }
@@ -564,6 +567,8 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
 
     
 
