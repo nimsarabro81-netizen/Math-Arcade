@@ -131,22 +131,39 @@ function toFraction(num: number, tolerance = 1.0E-6): string {
     if (Math.abs(num - Math.round(num)) < tolerance) {
         return Math.round(num).toString();
     }
-    
-    let h1=1; let h2=0;
-    let k1=0; let k2=1;
-    let b = num;
-    do {
-        let a = Math.floor(b);
-        let aux = h1; h1 = a*h1+h2; h2 = aux;
-        aux = k1; k1 = a*k1+k2; k2 = aux;
-        b = 1/(b-a);
-    } while (Math.abs(num-h1/k1) > num*tolerance);
 
-    // If denominator is 1, it's a whole number
-    if (k1 === 1) return String(h1);
+    let h1 = 1; let h2 = 0;
+    let k1 = 0; let k2 = 1;
+    let b = num;
+    let i = 0;
+    const maxIterations = 15; // Safeguard against infinite loops
+
+    do {
+        i++;
+        const a = Math.floor(b);
+        const aux = h1; h1 = a * h1 + h2; h2 = aux;
+        const aux2 = k1; k1 = a * k1 + k2; k2 = aux2;
+        
+        if (Math.abs(b - a) < tolerance) { // Avoid division by zero
+            break;
+        }
+
+        b = 1 / (b - a);
+        if (i > maxIterations) { // Break if it's taking too long
+            // Fallback for complex fractions that don't resolve quickly
+            return num.toFixed(2);
+        }
+    } while (Math.abs(num - h1 / k1) > num * tolerance);
     
+    if (k1 === 0) { // Should not happen with the safeguards, but just in case
+      return num.toFixed(2);
+    }
+    
+    if (k1 === 1) return String(h1);
+
     return `${h1}/${k1}`;
 }
+
 
 const formatNumber = (num: number) => {
     const rounded = parseFloat(num.toPrecision(10));
@@ -547,5 +564,7 @@ export function EquationEquilibrium({ score, onScoreChange, onGameComplete }: Eq
     </Card>
   );
 }
+
+    
 
     
